@@ -16,27 +16,11 @@ use Composer\Installer\PackageEvents;
 use Composer\Script\ScriptEvents;
 use Composer\Util\ProcessExecutor;
 use Composer\Util\Filesystem;
-use function in_array;
 
 /**
  *
  */
 class Plugin implements PluginInterface, EventSubscriberInterface {
-
-  /**
-   * Package name
-   */
-  const PACKAGE_NAME = 'acquia/blt';
-
-  /**
-   * BLT config directory.
-   */
-  const BLT_DIR = 'blt';
-
-  /**
-   * Priority that plugin uses to register callbacks.
-   */
-  const CALLBACK_PRIORITY = 60000;
 
   /**
    * @var Composer
@@ -85,17 +69,8 @@ class Plugin implements PluginInterface, EventSubscriberInterface {
     return array(
       PackageEvents::POST_PACKAGE_INSTALL => "onPostPackageEvent",
       PackageEvents::POST_PACKAGE_UPDATE => "onPostPackageEvent",
-      ScriptEvents::PRE_INSTALL_CMD => array(
-        array('scaffoldComposerIncludes', self::CALLBACK_PRIORITY),
-        array('checkInstallerPaths'),
-      ),
-      ScriptEvents::POST_UPDATE_CMD => array(
-        array('scaffoldComposerIncludes', self::CALLBACK_PRIORITY),
-        array('onPostCmdEvent'),
-      ),
-      ScriptEvents::PRE_AUTOLOAD_DUMP => array(
-        array('scaffoldComposerIncludes', self::CALLBACK_PRIORITY),
-      ),
+      ScriptEvents::PRE_INSTALL_CMD => 'checkInstallerPaths',
+      ScriptEvents::POST_UPDATE_CMD => 'onPostCmdEvent',
     );
   }
 
@@ -120,34 +95,6 @@ class Plugin implements PluginInterface, EventSubscriberInterface {
         if ($composer_required_json['extra']['installer-paths'] != $extra['installer-paths']) {
           $this->io->write('<warning>Warning: The value for extras.installer-paths in composer.json differs from BLT\'s recommended values.</warning>');
           $this->io->write('<warning>See https://github.com/acquia/blt/blob/8.x/template/composer.json</warning>');
-        }
-      }
-    }
-  }
-
-  /**
-   * Creates or updates composer include files.
-   *
-   * @param \Composer\Script\Event $event
-   */
-  public function scaffoldComposerIncludes(Event $event) {
-
-    $files = array(
-      'composer.required.json',
-      'composer.suggested.json',
-    );
-
-    $dir = $this->getRepoRoot() . DIRECTORY_SEPARATOR . self::BLT_DIR;
-    $package_dir = $this->getVendorPath() . DIRECTORY_SEPARATOR . self::PACKAGE_NAME;
-    if ($this->createDirectory($dir)) {
-      foreach ($files as $file) {
-        $source = $package_dir . DIRECTORY_SEPARATOR . $file;
-        $target = $dir . DIRECTORY_SEPARATOR . $file;
-        if (file_exists($source)) {
-          if (!file_exists($target) || md5_file($source) != md5_file($target)) {
-            $this->io->write("Copying $source to $target");
-            copy($source, $target);
-          }
         }
       }
     }
@@ -215,7 +162,7 @@ class Plugin implements PluginInterface, EventSubscriberInterface {
         $success = $this->executeCommand($this->getVendorPath() . '/acquia/blt/bin/blt internal:create-project --ansi', [], TRUE);
       }
       else {
-        $success = $this->executeCommand($this->getVendorPath() . '/acquia/blt/bin/blt internal:add-to-project --ansi', [], TRUE);
+        $success = $this->executeCommand($this->getVendorPath() . '/acquia/blt/bin/blt internal:add-to-project --ansi -y', [], TRUE);
       }
     }
     elseif ($options['blt']['update']) {
@@ -256,20 +203,10 @@ class Plugin implements PluginInterface, EventSubscriberInterface {
    */
   protected function isNewProject() {
     $composer_json = json_decode(file_get_contents($this->getRepoRoot() . '/composer.json'), TRUE);
-    if (!empty($composer_json['name'] && in_array($composer_json['name'], ['acquia/blt-project', 'acquia/blted8']))) {
+    if (isset($composer_json['name']) && $composer_json['name'] == 'acquia/blt-project') {
       return TRUE;
     }
     return FALSE;
-  }
-
-  /**
-   * Create a new directory.
-   *
-   * @return bool
-   *   TRUE if directory exists or is created.
-   */
-  protected function createDirectory($path) {
-    return is_dir($path) || mkdir($path);
   }
 
   /**
