@@ -84,7 +84,6 @@ class Updater {
     $this->composerSuggestedJsonFilepath = $this->getBltRoot() . '/composer.suggested.json';
     $this->templateComposerJsonFilepath = $this->getBltRoot() . '/template/composer.json';
     $this->projectYmlFilepath = $this->repoRoot . '/blt/project.yml';
-    $this->projectLocalYmlFilepath = $this->repoRoot . '/blt/project.local.yml';
     $this->formatter = new FormatterHelper();
 
     // Create "ice" style.
@@ -450,26 +449,10 @@ class Updater {
   }
 
   /**
-   * @return mixed
-   */
-  public function getProjectLocalYml() {
-    $project_yml = Yaml::parse(file_get_contents($this->projectLocalYmlFilepath));
-
-    return $project_yml;
-  }
-
-  /**
    * @param $contents
    */
   public function writeProjectYml($contents) {
     file_put_contents($this->projectYmlFilepath, Yaml::dump($contents, 3, 2));
-  }
-
-  /**
-   * @param $contents
-   */
-  public function writeProjectLocalYml($contents) {
-    file_put_contents($this->projectLocalYmlFilepath, Yaml::dump($contents, 3, 2));
   }
 
   /**
