@@ -6,7 +6,6 @@ project:
   prefix: 'BLT'
   human_name: 'BLTed 8'
   profile:
-    # You can generate a custom profile by running '../vendor/bin/drupal generate:profile' from the docroot.
     name: 'lightning'
   # This will be used as the local uri for all developers.
   local:
@@ -19,21 +18,22 @@ git:
   remotes: []
 
 drush:
-  # You can set custom project aliases in drush/site-aliases/aliases.drushrc.php.
+  # You can set custom project aliases in drush/sites/*.site.yml.
   aliases:
     # The remote environment from which the database will be pulled.
     remote: ${project.machine_name}.test
     # The local environment against which all local drush commands are run.
-    local: self
+    local: 'self'
     # The drush alias against which all ci commands are run.
-    ci: self
+    ci: 'self'
     # The default drush alias to be used when no environment is specified.
   default_alias: ${drush.aliases.local}
 
 # Configuration management options, such as core CM or features.
 # cm:
 #   features:
-#     bundle: blted8
+#     bundle:
+#       - blted8
 #     no-overrides: 'true'
 
 # An array of modules to be enabled or uninstalled automatically in local, ci, and deploy contexts.
@@ -45,7 +45,6 @@ modules:
       - seckit
       - views_ui
     uninstall:
-      - acsf
       - acquia_connector
       - shield
   ci:

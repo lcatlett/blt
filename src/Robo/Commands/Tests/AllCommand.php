@@ -15,18 +15,15 @@ class AllCommand extends BltTasks {
    * @command tests
    *
    * @aliases tests:all
-   *
    * @executeInDrupalVm
    */
   public function tests() {
-    $status_code = $this->invokeCommands([
+    $this->invokeCommands([
       'tests:behat',
       'tests:phpunit',
       'tests:security-updates',
       'frontend:test',
     ]);
-
-    return $status_code;
   }
 
 }

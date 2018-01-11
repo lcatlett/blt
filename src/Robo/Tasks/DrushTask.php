@@ -19,6 +19,7 @@ use Robo\Common\CommandArguments;
  * ```
  */
 class DrushTask extends CommandStack {
+
   use CommandArguments {
     option as traitOption;
   }
@@ -45,13 +46,6 @@ class DrushTask extends CommandStack {
    * @var string
    */
   protected $uri;
-
-  /**
-   * Assume 'yes' or 'no' to all prompts.
-   *
-   * @var string|bool
-   */
-  protected $assume;
 
   /**
    * Indicates if the command output should be verbose.
@@ -154,23 +148,6 @@ class DrushTask extends CommandStack {
   }
 
   /**
-   * Assume 'yes' or 'no' to all prompts.
-   *
-   * @param string|bool $assume
-   *
-   * @return $this
-   */
-  public function assume($assume) {
-    if ($assume === "") {
-      $this->assume = $assume;
-    }
-    else {
-      $this->assume = $this->mixedToBool($assume);
-    }
-    return $this;
-  }
-
-  /**
    * Indicates if the command output should be verbose.
    *
    * @param string|bool $verbose
@@ -212,14 +189,11 @@ class DrushTask extends CommandStack {
     if (!isset($this->uri)) {
       $this->uri = $this->getConfig()->get('drush.uri');
     }
-    if (!isset($this->assume)) {
-      $this->assume($this->getConfig()->get('drush.assume'));
-    }
-    if (!isset($this->verbose)) {
-      $this->verbose($this->getConfig()->get('drush.verbose'));
-    }
     if (!isset($this->alias)) {
       $this->alias($this->getConfig()->get('drush.alias'));
+    }
+    if (!isset($this->interactive)) {
+      $this->interactive(FALSE);
     }
 
     $this->defaultsInitialized = TRUE;
@@ -267,9 +241,8 @@ class DrushTask extends CommandStack {
       $this->option('uri', $this->uri);
     }
 
-    if (isset($this->assume) && is_bool($this->assume)) {
-      $assumption = $this->assume ? 'yes' : 'no';
-      $this->option($assumption);
+    if (!$this->interactive) {
+      $this->option('no-interaction');
     }
 
     if ($this->verbosityThreshold() >= VerbosityThresholdInterface::VERBOSITY_VERBOSE
@@ -284,6 +257,8 @@ class DrushTask extends CommandStack {
     if ($this->include) {
       $this->option('include', $this->include);
     }
+
+    $this->option("ansi");
   }
 
   /**
@@ -304,6 +279,10 @@ class DrushTask extends CommandStack {
     if (empty($this->exec)) {
       throw new TaskException($this, 'You must add at least one command');
     }
+
+    // Set $input to NULL so that it is not inherited by the process.
+    $this->setInput(NULL);
+
     // If 'stopOnFail' is not set, or if there is only one command to run,
     // then execute the single command to run.
     if (!$this->stopOnFail || (count($this->exec) == 1)) {
@@ -331,7 +310,7 @@ class DrushTask extends CommandStack {
   }
 
   /**
-   * Adds drush comands with their corresponding options to stack.
+   * Adds drush commands with their corresponding options to stack.
    */
   protected function setupExecution() {
     $this->setOptionsForLastCommand();

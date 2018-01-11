@@ -2,8 +2,8 @@
 
 namespace Acquia\Blt\Robo\Filesets;
 
-use Acquia\Blt\Custom\Filesets;
 use Acquia\Blt\Robo\Config\ConfigAwareTrait;
+use Acquia\Blt\Robo\Exceptions\BltException;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Annotations\IndexedReader;
@@ -116,6 +116,8 @@ class FilesetManager implements ConfigAwareInterface, LoggerAwareInterface {
    *
    * @return \Symfony\Component\Finder\Finder[]
    *   An array of instantiated filesets.
+   *
+   * @throws \Acquia\Blt\Robo\Exceptions\BltException
    */
   public function getFilesets($fileset_ids = []) {
     if (!$this->filesets) {
@@ -123,7 +125,13 @@ class FilesetManager implements ConfigAwareInterface, LoggerAwareInterface {
     }
 
     if ($fileset_ids) {
-      return array_intersect_key($this->filesets, array_flip($fileset_ids));
+      foreach ($fileset_ids as $fileset_id) {
+        if (!in_array($fileset_id, array_keys($this->filesets))) {
+          throw new BltException("Unable to find fileset $fileset_id!");
+        }
+        $filesets[$fileset_id] = $this->filesets[$fileset_id];
+      }
+      return $filesets;
     }
 
     return $this->filesets;
@@ -162,13 +170,15 @@ class FilesetManager implements ConfigAwareInterface, LoggerAwareInterface {
     $filesets = [];
     $this->logger->debug("Gathering filesets from annotated methods...");;
     foreach ($fileset_annotations as $class => $fileset) {
-      $fileset_class = new $class();
-      $fileset_class->setConfig($this->config);
-      foreach ($fileset as $id => $method_name) {
-        $this->logger->debug("Calling $method_name on $class object...");
-        if (method_exists($fileset_class, $method_name)) {
-          $filesets[$id] = call_user_func_array([$fileset_class, $method_name],
-            []);
+      if (class_exists($class)) {
+        $fileset_class = new $class();
+        $fileset_class->setConfig($this->config);
+        foreach ($fileset as $id => $method_name) {
+          $this->logger->debug("Calling $method_name on $class object...");
+          if (method_exists($fileset_class, $method_name)) {
+            $filesets[$id] = call_user_func_array([$fileset_class, $method_name],
+              []);
+          }
         }
       }
     }

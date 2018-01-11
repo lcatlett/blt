@@ -3,7 +3,11 @@
 namespace Acquia\Blt\Robo\Commands\Vm;
 
 use Acquia\Blt\Robo\BltTasks;
+use Acquia\Blt\Robo\Common\ArrayManipulator;
 use Acquia\Blt\Robo\Exceptions\BltException;
+use function file_exists;
+use function file_get_contents;
+use Grasmash\YamlExpander\Expander;
 use Robo\Contract\VerbosityThresholdInterface;
 use Symfony\Component\Yaml\Yaml;
 
@@ -11,16 +15,16 @@ use Symfony\Component\Yaml\Yaml;
  * Defines commands in the "vm" namespace.
  */
 class VmCommand extends BltTasks {
-
   protected $drupalVmAlias;
   protected $drupalVmVersionConstraint;
   protected $defaultDrupalVmDrushAliasesFile;
   protected $defaultDrupalVmConfigFile;
   protected $defaultDrupalVmVagrantfile;
-  protected $defaultDrushAliasesFile;
   protected $projectDrushAliasesFile;
   protected $projectDrupalVmConfigFile;
   protected $projectDrupalVmVagrantfile;
+  protected $vmConfigDir;
+  protected $vmConfigFile;
   protected $vmDir;
 
   /**
@@ -31,14 +35,16 @@ class VmCommand extends BltTasks {
   public function initialize() {
     $this->drupalVmAlias = $this->getConfigValue('project.machine_name') . '.local';
     $this->drupalVmVersionConstraint = '~4.3';
-    $this->defaultDrupalVmDrushAliasesFile = $this->getConfigValue('blt.root') . '/scripts/drupal-vm/drupal-vm.aliases.drushrc.php';
+    $this->defaultDrupalVmDrushAliasesFile = $this->getConfigValue('blt.root') . '/scripts/drupal-vm/drupal-vm.site.yml';
     $this->defaultDrupalVmConfigFile = $this->getConfigValue('blt.root') . '/scripts/drupal-vm/config.yml';
     $this->defaultDrupalVmVagrantfile = $this->getConfigValue('blt.root') . '/scripts/drupal-vm/Vagrantfile';
-    $this->defaultDrushAliasesFile = $this->getConfigValue('blt.root') . '/template/drush/site-aliases/aliases.drushrc.php';
-    $this->projectDrupalVmConfigFile = $this->getConfigValue('repo.root') . '/box/config.yml';
-    $this->projectDrushAliasesFile = $this->getConfigValue('repo.root') . '/drush/site-aliases/aliases.drushrc.php';
+    $this->projectDrushAliasesFile = $this->getConfigValue('repo.root') . '/drush/sites/' . $this->getConfigValue('project.machine_name') . '.site.yml';
     $this->projectDrupalVmVagrantfile = $this->getConfigValue('repo.root') . '/Vagrantfile';
-    $this->vmDir = $this->getConfigValue('repo.root') . '/box';
+    $this->projectDrupalVmConfigFile = $this->getConfigValue('vm.config');
+    $this->vmDir = dirname($this->projectDrupalVmConfigFile);
+    $this->vmConfigDir = str_replace($this->getConfigValue('repo.root') . DIRECTORY_SEPARATOR, '', $this->vmDir);
+    $path_parts = explode(DIRECTORY_SEPARATOR, $this->projectDrupalVmConfigFile);
+    $this->vmConfigFile = array_pop($path_parts);
   }
 
   /**
@@ -49,6 +55,8 @@ class VmCommand extends BltTasks {
    * @aliases vm:all
    *
    * @options no-boot
+   *
+   * @throws \Exception
    */
   public function vm($options = ['no-boot' => FALSE]) {
     if (!$this->getInspector()->isDrupalVmConfigPresent()) {
@@ -79,6 +87,7 @@ class VmCommand extends BltTasks {
    * Destroys existing VM and all related configuration.
    *
    * @command vm:nuke
+   * @throws \Exception
    */
   public function nuke() {
     $confirm = $this->confirm("This will destroy your VM, and delete all associated configuration. Continue?");
@@ -94,7 +103,7 @@ class VmCommand extends BltTasks {
         ->remove($this->projectDrupalVmVagrantfile)
         // @todo More surgically remove drush.default_alias and drush.aliases.local values from this file
         // rather than overwriting it.
-        ->remove($this->getConfigValue('repo.root') . '/blt/project.local.yml')
+        ->remove($this->getConfigValue('blt.config-files.local'))
         ->copy($this->defaultDrushAliasesFile, $this->projectDrushAliasesFile, TRUE)
         ->run();
       $this->say("Your Drupal VM instance has been obliterated.");
@@ -104,9 +113,12 @@ class VmCommand extends BltTasks {
 
   /**
    * Installs and configures default Drupal VM instance.
+   * @throws \Exception
    */
   protected function install() {
-    $this->requireDrupalVm();
+    if (!$this->isDrupalVmRequired()) {
+      $this->requireDrupalVm();
+    }
     $this->config();
   }
 
@@ -116,36 +128,12 @@ class VmCommand extends BltTasks {
    * @command vm:config
    */
   public function config() {
-
     $this->say("Generating default configuration for Drupal VM...");
 
-    $this->logger->info("Adding a drush alias for the new VM...");
-    // @todo Concat only if it has not already been done.
-    $this->taskConcat([
-      $this->projectDrushAliasesFile,
-      $this->defaultDrupalVmDrushAliasesFile,
-    ])
-      ->to($this->projectDrushAliasesFile)
-      ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
-      ->run();
-    $this->getConfig()->expandFileProperties($this->projectDrushAliasesFile);
+    $this->createDrushAlias();
+    $this->createConfigFiles();
+    $this->customizeConfigFiles();
 
-    $this->logger->info("Creating configuration files for Drupal VM...");
-
-    $this->taskFilesystemStack()
-      ->mkdir($this->vmDir)
-      ->copy($this->defaultDrupalVmConfigFile, $this->projectDrupalVmConfigFile, TRUE)
-      ->copy($this->defaultDrupalVmVagrantfile, $this->projectDrupalVmVagrantfile, TRUE)
-      ->stopOnFail()
-      ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
-      ->run();
-
-    // Generate a Random IP address for the new VM.
-    $config = clone $this->getConfig();
-    $random_local_ip = "192.168." . rand(0, 255) . '.' . rand(0, 255);
-    $config->set('random.ip', $random_local_ip);
-
-    $config->expandFileProperties($this->projectDrupalVmConfigFile);
     $vm_config = Yaml::parse(file_get_contents($this->projectDrupalVmConfigFile));
     $this->validateConfig($vm_config);
 
@@ -155,9 +143,9 @@ class VmCommand extends BltTasks {
 
     $this->say(" * To customize the VM, follow the Quick Start Guide in Drupal VM's README:");
     $this->say("   <comment>https://github.com/geerlingguy/drupal-vm#quick-start-guide</comment>");
-
+    $this->say(" * All <comment>blt</comment> commands executed on your host machine will be executed against this VM.");
     $this->say(" * To run drush commands against the VM, use the <comment>@{$this->drupalVmAlias}</comment> alias.");
-    $this->say(" * From now on, please use vagrant commands to manage your virtual machine.");
+    $this->say(" * From now on, please use vagrant commands to manage your virtual machine on this computer.");
     $this->say("");
   }
 
@@ -175,7 +163,7 @@ class VmCommand extends BltTasks {
     $contents = Yaml::parse(file_get_contents($filename));
     $contents['drush']['default_alias'] = $this->drupalVmAlias;
     $contents['drush']['aliases']['local'] = $this->drupalVmAlias;
-    $contents['behat']['web-driver'] = 'phantomjs';
+    $contents['vm']['enable'] = TRUE;
     $yaml = Yaml::dump($contents, 3, 2);
     file_put_contents($filename, $yaml);
 
@@ -185,6 +173,7 @@ class VmCommand extends BltTasks {
 
   /**
    * Boots a Drupal VM.
+   * @throws \Acquia\Blt\Robo\Exceptions\BltException
    */
   protected function boot() {
     $this->checkRequirements();
@@ -209,7 +198,10 @@ class VmCommand extends BltTasks {
         }
       }
       else {
-        $this->yell("Drupal VM booted successfully. Please use vagrant commands to interact with your VM from now on.");
+        $this->yell("Drupal VM booted successfully.");
+        $this->say(" * All <comment>blt</comment> commands executed on your host machine will be executed against this VM.");
+        $this->say(" * To run drush commands against the VM, use the <comment>@{$this->drupalVmAlias}</comment> alias.");
+        $this->say(" * From now on, please use vagrant commands to manage your virtual machine on this computer.");
       }
       return $result;
     }
@@ -221,38 +213,33 @@ class VmCommand extends BltTasks {
    * @throws \Exception
    */
   protected function requireDrupalVm() {
+
     $this->say("Adding geerlingguy/drupal-vm:{$this->drupalVmVersionConstraint} to composer.json's require-dev array...");
-    $result = $this->taskExec("composer require --dev geerlingguy/drupal-vm:{$this->drupalVmVersionConstraint}")
-      ->dir($this->getConfigValue('repo.root'))
-      ->printOutput(TRUE)
-      ->run();
+    $package_options = [
+      'package_name' => 'geerlingguy/drupal-vm',
+      'package_version' => $this->drupalVmVersionConstraint,
+      ['dev' => TRUE],
+    ];
+    return $this->invokeCommand('composer:require', $package_options);
+  }
 
-    if (!$result->wasSuccessful()) {
-      $this->logger->error("An error occurred while requiring geerlingguy/drupal-vm.");
-      $this->say("This is likely due to an incompatibility with your existing packages.");
-      $confirm = $this->confirm("Should BLT attempt to update all of your Composer packages in order to find a compatible version?");
-      if ($confirm) {
-        $result = $this->taskExec("composer require --dev geerlingguy/drupal-vm:{$this->drupalVmVersionConstraint} --no-update && composer update")
-          ->dir($this->getConfigValue('repo.root'))
-          ->printOutput(TRUE)
-          ->run();
-        if (!$result->wasSuccessful()) {
-          throw new \Exception("Unable to install Drupal VM.");
-        }
-      }
-      else {
-        // @todo revert previous file chanages.
-        throw new BltException("Unable to install Drupal VM.");
-      }
-    }
-
-    return $result;
+  /**
+   * Determines if Drupal VM is currently in composer.json's require-dev.
+   *
+   * @return bool
+   *   TRUE if it is present already and matches version constraint.
+   */
+  protected function isDrupalVmRequired() {
+    $composer_json = json_decode(file_get_contents($this->getConfigValue('repo.root') . '/composer.json'), TRUE);
+    return !empty($composer_json['require-dev']['geerlingguy/drupal-vm'])
+      && $composer_json['require-dev']['geerlingguy/drupal-vm'] == $this->drupalVmVersionConstraint;
   }
 
   /**
    * Checks local system for Drupal VM requirements.
    *
    * Verifies that vagrant and its required plugins are installed.
+   * @throws \Acquia\Blt\Robo\Exceptions\BltException
    */
   protected function checkRequirements() {
     if (!$this->getInspector()->commandExists("vagrant")) {
@@ -263,7 +250,6 @@ class VmCommand extends BltTasks {
     }
     else {
       $this->installVagrantPlugin('vagrant-hostsupdater');
-      $this->installVagrantPlugin('vagrant-exec');
     }
   }
 
@@ -275,8 +261,103 @@ class VmCommand extends BltTasks {
    */
   protected function validateConfig($config) {
     if (strstr($config['vagrant_machine_name'], '_')) {
-      $this->logger->warning("vagrant_machine_namefor should not contain an underscore.");
+      $this->logger->warning("vagrant_machine_name {$config['vagrant_machine_name']} should not contain an underscore.");
     }
+  }
+
+  /**
+   * Sets the Drupal VM base box.
+   *
+   * @param \Acquia\Blt\Robo\Config\BltConfig $config
+   */
+  protected function setBaseBox($config) {
+    $base_box = $this->askChoice(
+      "Which base box would you like to use?",
+      [
+        'geerlingguy/ubuntu1604',
+        'beet/box',
+      ],
+      'geerlingguy/ubuntu1604');
+
+    switch ($base_box) {
+      case 'beet/box':
+        $config->set('workspace', '/beetbox/workspace/{{ php_version }}');
+        $config->set('installed_extras', [
+          'drush',
+          'nodejs',
+          'xdebug',
+        ]);
+        break;
+
+      case 'geerlingguy/ubuntu1604':
+        $config->set('workspace', '/root');
+        $config->set('installed_extras', [
+          'adminer',
+          'chrome',
+          'drush',
+          'mailhog',
+          'memcached',
+          'nodejs',
+          'solr',
+          'xdebug',
+        ]);
+        break;
+    }
+
+    $config->set('base_box', $base_box);
+  }
+
+  /**
+   * Modifies the default configuration file.
+   */
+  protected function customizeConfigFiles() {
+    /** @var \Acquia\Blt\Robo\Config\BltConfig $config */
+    $config = clone $this->getConfig();
+
+    $config->set('drupalvm.config.dir', $this->vmConfigDir);
+    $config->expandFileProperties($this->projectDrupalVmVagrantfile);
+
+    // Generate a Random IP address for the new VM.
+    $random_local_ip = "192.168." . rand(3, 254) . '.' . rand(3, 254);
+    $config->set('random.ip', $random_local_ip);
+
+    $this->setBaseBox($config);
+
+    $config->expandFileProperties($this->projectDrupalVmConfigFile);
+  }
+
+  /**
+   * Creates the default configuration file.
+   */
+  protected function createConfigFiles() {
+    $this->logger->info("Creating configuration files for Drupal VM...");
+
+    $this->taskFilesystemStack()
+      ->mkdir($this->vmDir)
+      ->copy($this->defaultDrupalVmConfigFile, $this->projectDrupalVmConfigFile,
+        TRUE)
+      ->copy($this->defaultDrupalVmVagrantfile,
+        $this->projectDrupalVmVagrantfile, TRUE)
+      ->stopOnFail()
+      ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
+      ->run();
+  }
+
+  /**
+   * Creates a new drush alias record.
+   */
+  protected function createDrushAlias() {
+    $this->logger->info("Adding a drush alias for the new VM...");
+    if (!file_exists($this->projectDrushAliasesFile)) {
+      $new_aliases = Expander::parse(file_get_contents($this->defaultDrupalVmDrushAliasesFile), $this->getConfig()->export());
+    }
+    else {
+      $project_drush_aliases = Expander::parse(file_get_contents($this->projectDrushAliasesFile), $this->getConfig()->export());
+      $default_drupal_vm_drush_aliases = Expander::parse(file_get_contents($this->defaultDrupalVmDrushAliasesFile), $this->getConfig()->export());
+      $new_aliases = ArrayManipulator::arrayMergeRecursiveDistinct($project_drush_aliases, $default_drupal_vm_drush_aliases);
+    }
+
+    file_put_contents($this->projectDrushAliasesFile, Yaml::dump($new_aliases));
   }
 
 }

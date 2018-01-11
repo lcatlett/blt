@@ -2,8 +2,13 @@
 
 namespace Acquia\Blt\Robo\Inspector;
 
+use Acquia\Blt\Robo\Blt;
+use Acquia\Blt\Robo\Common\ArrayManipulator;
 use Acquia\Blt\Robo\Config\YamlConfigProcessor;
-use Robo\Config\YamlConfigLoader;
+use Acquia\Blt\Robo\Exceptions\BltException;
+use League\Container\ContainerAwareInterface;
+use League\Container\ContainerAwareTrait;
+use Consolidation\Config\Loader\YamlConfigLoader;
 use Acquia\Blt\Robo\Common\Executor;
 use Acquia\Blt\Robo\Common\IO;
 use Acquia\Blt\Robo\Config\BltConfig;
@@ -15,16 +20,19 @@ use Robo\Contract\BuilderAwareInterface;
 use Robo\Contract\ConfigAwareInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Robo\Contract\VerbosityThresholdInterface;
+use Tivie\OS\Detector;
+use const Tivie\OS\MACOSX;
 
 /**
  * Class Inspector.
  *
  * @package Acquia\Blt\Robo\Common
  */
-class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAwareInterface {
+class Inspector implements BuilderAwareInterface, ConfigAwareInterface, ContainerAwareInterface, LoggerAwareInterface {
 
   use BuilderAwareTrait;
   use ConfigAwareTrait;
+  use ContainerAwareTrait;
   use LoggerAwareTrait;
   use IO;
 
@@ -43,6 +51,11 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
   /**
    * @var null
    */
+  protected $isDrupalVmLocallyInitialized = NULL;
+
+  /**
+   * @var null
+   */
   protected $isMySqlAvailable = NULL;
 
   /**
@@ -51,9 +64,19 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
   protected $drupalVmStatus = NULL;
 
   /**
+   * @var null
+   */
+  protected $isDrupalVmBooted = NULL;
+
+  /**
    * @var \Symfony\Component\Filesystem\Filesystem
    */
   protected $fs;
+
+  /**
+   * @var bool
+   */
+  protected $warningsIssued = FALSE;
 
   /**
    * The constructor.
@@ -87,6 +110,8 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
     $this->isDrupalInstalled = NULL;
     $this->isMySqlAvailable = NULL;
     $this->drupalVmStatus = [];
+    $this->isDrupalVmLocallyInitialized = NULL;
+    $this->isDrupalVmBooted = NULL;
   }
 
   /**
@@ -218,9 +243,66 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
    *   The result of `drush status`.
    */
   public function getDrushStatus() {
-    $status_info = json_decode($this->executor->drush('status --format=json --show-passwords')->run()->getMessage(), TRUE);
+    $status_info = (array) json_decode($this->executor->drush('status --format=json --fields=*')->run()->getMessage(), TRUE);
 
     return $status_info;
+  }
+
+  /**
+   * @return mixed
+   */
+  public function getStatus() {
+    $status = $this->getDrushStatus();
+    $defaults = [
+      'root' => $this->getConfigValue('docroot'),
+      'uri' => $this->getConfigValue('site'),
+    ];
+
+    $status['composer-version'] = $this->getComposerVersion();
+    $status['blt-version'] = Blt::VERSION;
+    $status['stacks']['drupal-vm']['inited'] = $this->isDrupalVmLocallyInitialized();
+    $status['stacks']['dev-desktop']['inited'] = $this->isDevDesktopInitialized();
+
+    $status = ArrayManipulator::arrayMergeRecursiveDistinct($defaults, $status);
+    ksort($status);
+
+    return $status;
+  }
+
+  /**
+   * Validates a drush alias.
+   *
+   * @param string $alias
+   *
+   * @return bool
+   *   TRUE if alias is valid.
+   */
+  public function isDrushAliasValid($alias) {
+    $bin = $this->getConfigValue('composer.bin');
+    $this->executor->execute("'$bin/drush' site:alias @$alias --format=json")
+      ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERY_VERBOSE)
+      ->run()
+      ->wasSuccessful();
+  }
+
+  /**
+   * Gets the major version of drush.
+   *
+   * @return int
+   *   The major version of drush.
+   */
+  public function getDrushMajorVersion() {
+    $version_info = json_decode($this->executor->drush('version --format=json')->run()->getMessage(), TRUE);
+    if (!empty($version_info['drush-version'])) {
+      $version = $version_info['drush-version'];
+    }
+    else {
+      $version = $version_info;
+    }
+
+    $major_version = substr($version, 0, 1);
+
+    return (int) $major_version;
   }
 
   /**
@@ -263,7 +345,8 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
    *   TRUE if Drupal VM configuration exists.
    */
   public function isDrupalVmConfigPresent() {
-    return file_exists($this->getConfigValue('repo.root') . '/Vagrantfile');
+    return file_exists($this->getConfigValue('repo.root') . '/Vagrantfile')
+      && file_exists($this->getConfigValue('vm.config'));
   }
 
   /**
@@ -275,14 +358,43 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
    *   TRUE if Drupal VM is initialized for the local machine.
    */
   public function isDrupalVmLocallyInitialized() {
+    if (is_null($this->isDrupalVmLocallyInitialized)) {
+      $this->isDrupalVmLocallyInitialized = $this->getConfigValue('vm.enable') && $this->isDrupalVmConfigValid();
+      $statement = $this->isDrupalVmLocallyInitialized ? "is" : "is not";
+      $this->logger->debug("Drupal VM $statement initialized.");
+    }
+
+    return $this->isDrupalVmLocallyInitialized;
+  }
+
+  /**
+   * Determines if Drupal VM config is valid.
+   *
+   * @return bool
+   *   TRUE is Drupal VM config is valid.
+   */
+  public function isDrupalVmConfigValid() {
+    $valid = TRUE;
     $status = $this->getDrupalVmStatus();
     $machine_name = $this->getConfigValue('project.machine_name');
-    $initialized = !empty($status[$machine_name])
-      && file_exists($this->getConfigValue('repo.root') . '/box/config.yml');
-    $statement = $initialized ? "is" : "is not";
-    $this->logger->debug("Drupal VM $statement initialized.");
+    if (empty($status[$machine_name]['state'])) {
+      $this->logger->error("Could not find VM. Please ensure that the VM machine name matches project.machine_name");
+      $valid = FALSE;
+    }
+    else {
+      if ($status[$machine_name]['state'] == 'not_created') {
+        $this->logger->error("Drupal VM config has been initialized, but the VM has not been created. Please re-run `blt vm`.");
+        $valid = FALSE;
+      }
+    }
 
-    return $initialized;
+    $file_path = $this->getConfigValue('vm.config');
+    if (!file_exists($file_path)) {
+      $this->logger->error("$file_path is missing. Please re-run `blt vm`.");
+      $valid = FALSE;
+    }
+
+    return $valid;
   }
 
   /**
@@ -293,18 +405,20 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
    */
   public function isDrupalVmBooted() {
     if (!$this->commandExists('vagrant')) {
-      return FALSE;
+      $this->isDrupalVmBooted = FALSE;
     }
 
-    $status = $this->getDrupalVmStatus();
-    $machine_name = $this->getConfigValue('project.machine_name');
-    $booted = !empty($status[$machine_name]['state'])
-      && $status[$machine_name]['state'] == 'running';
+    if (is_null($this->isDrupalVmBooted)) {
+      $status = $this->getDrupalVmStatus();
+      $machine_name = $this->getConfigValue('project.machine_name');
+      $this->isDrupalVmBooted = !empty($status[$machine_name]['state'])
+        && $status[$machine_name]['state'] == 'running';
 
-    $statement = $booted ? "is" : "is not";
-    $this->logger->debug("Drupal VM $statement booted.");
+      $statement = $this->isDrupalVmBooted ? "is" : "is not";
+      $this->logger->debug("Drupal VM $statement booted.");
+    }
 
-    return $booted;
+    return $this->isDrupalVmBooted;
   }
 
   /**
@@ -314,7 +428,7 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
    *   TRUE if current PHP process is being executed inside of VM.
    */
   public function isVmCli() {
-    return $_SERVER['USER'] == 'vagrant';
+    return (isset($_SERVER['USER']) && $_SERVER['USER'] == 'vagrant');
   }
 
   /**
@@ -336,6 +450,28 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
       ->getMessage();
 
     return $installed;
+  }
+
+  public function isDevDesktopInitialized() {
+    $file_contents = file_get_contents($this->getConfigValue('drupal.settings_file'));
+
+    return strstr($file_contents, 'DDSETTINGS');
+  }
+
+  /**
+   * Gets Composer version.
+   *
+   * @return string
+   *   The version of Composer.
+   */
+  public function getComposerVersion() {
+    $version = $this->executor->execute("composer --version")
+      ->interactive(FALSE)
+      ->silent(TRUE)
+      ->run()
+      ->getMessage();
+
+    return $version;
   }
 
   /**
@@ -367,7 +503,7 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
     $user = posix_getpwuid(posix_getuid());
     $home_dir = $user['dir'];
 
-    if (!empty($_ENV['SHELL']) && strstr($_ENV['SHELL'], 'zsh')) {
+    if (strstr(getenv('SHELL'), 'zsh')) {
       $file = $home_dir . '/.zshrc';
     }
     elseif (file_exists($home_dir . '/.bash_profile')) {
@@ -378,6 +514,9 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
     }
     elseif (file_exists($home_dir . '/.profile')) {
       $file = $home_dir . '/.profile';
+    }
+    elseif (file_exists($home_dir . '/.functions')) {
+      $file = $home_dir . '/.functions';
     }
 
     return $file;
@@ -427,6 +566,7 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
     $loader = new YamlConfigLoader();
     $processor = new YamlConfigProcessor();
     $processor->extend($loader->load($behat_local_config_file));
+    $processor->extend($loader->load($this->getConfigValue('repo.root') . '/tests/behat/behat.yml'));
     $behat_local_config->import($processor->export());
 
     return $behat_local_config;
@@ -575,7 +715,115 @@ class Inspector implements BuilderAwareInterface, ConfigAwareInterface, LoggerAw
       }
       list($timestamp, $target, $type, $data) = $parsed_line;
       $this->drupalVmStatus[$target][$type] = $data;
+      $this->logger->debug("vagrant $target.$type = $data");
     }
+  }
+
+  /**
+   * Indicates whether ACSF has been initialized.
+   *
+   * @return bool
+   *   TRUE if ACSF has been initialized.
+   */
+  public function isAcsfInited() {
+    return file_exists($this->getConfigValue('docroot') . '/sites/g');
+  }
+
+  /**
+   * Gets the Operating system type.
+   *
+   * @return int
+   */
+  public function isOsx() {
+    $os_detector = new Detector();
+    $os_type = $os_detector->getType();
+
+    return $os_type == MACOSX;
+  }
+
+  /**
+   * Gets the current schema version of the root project.
+   *
+   * @return string
+   *   The current schema version.
+   */
+  public function getCurrentSchemaVersion() {
+    if (file_exists($this->getConfigValue('blt.config-files.schema-version'))) {
+      $version = file_get_contents($this->getConfigValue('blt.config-files.schema-version'));
+    }
+    else {
+      $version = $this->getContainer()->get('updater')->getLatestUpdateMethodVersion();
+    }
+
+    return $version;
+  }
+
+  /**
+   *
+   */
+  public function isSchemaVersionUpToDate() {
+    return $this->getCurrentSchemaVersion() >= $this->getContainer()->get('updater')->getLatestUpdateMethodVersion();
+  }
+
+  /**
+   * Emits a warning if Drupal VM is initialized but not running.
+   */
+  protected function warnIfDrupalVmNotRunning() {
+    if (!$this->isVmCli() && $this->isDrupalVmLocallyInitialized() && !$this->isDrupalVmBooted()) {
+      $this->logger->warning("Drupal VM is locally initialized, but is not running.");
+    }
+  }
+
+  /**
+   * Issues warnings to user if their local environment is mis-configured.
+   */
+  public function issueEnvironmentWarnings() {
+    if (!$this->warningsIssued) {
+      $this->warnIfPhpOutdated();
+      $this->warnIfDrupalVmNotRunning();
+      $this->warnIfXdebugLoaded();
+      $this->warningsIssued = TRUE;
+    }
+  }
+
+  /**
+   * Throws an exception if the minimum PHP version is not met.
+   *
+   * @throws \Acquia\Blt\Robo\Exceptions\BltException
+   */
+  public function warnIfPhpOutdated() {
+    $minimum_php_version = 5.6;
+    $current_php_version = phpversion();
+    if ($current_php_version < $minimum_php_version) {
+      throw new BltException("BLT requires PHP $minimum_php_version or greater. You are using $current_php_version.");
+    }
+  }
+
+  /**
+   * Warns the user if the xDebug extension is loaded.
+   */
+  protected function warnIfXdebugLoaded() {
+    $xdebug_loaded = extension_loaded('xdebug');
+    if ($xdebug_loaded) {
+      $this->logger->warning("The xDebug extension is loaded. This will significantly decrease performance.");
+    }
+  }
+
+  /**
+   * Determines if the active config is identical to sync directory.
+   *
+   * @return bool
+   *   TRUE if config is identical.
+   */
+  public function isActiveConfigIdentical() {
+    $identical = FALSE;
+    $result = $this->executor->drush("cex --no")
+      ->run();
+    $message = trim($result->getMessage());
+    if (strpos($message, 'The active configuration is identical to the configuration in the export directory')) {
+      $identical = TRUE;
+    }
+    return $identical;
   }
 
 }

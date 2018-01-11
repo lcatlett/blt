@@ -3,6 +3,7 @@
 namespace Acquia\Blt\Robo\Commands\Acsf;
 
 use Acquia\Blt\Robo\BltTasks;
+use Acquia\Blt\Robo\Common\YamlMunge;
 use Acquia\Blt\Robo\Exceptions\BltException;
 use Robo\Contract\VerbosityThresholdInterface;
 
@@ -12,19 +13,53 @@ use Robo\Contract\VerbosityThresholdInterface;
 class AcsfCommand extends BltTasks {
 
   /**
+   * Prints information about the command.
+   */
+  public function printPreamble() {
+    $this->logger->notice("This command will initialize support for Acquia Cloud Site Factory by performing the following tasks:");
+    $this->logger->notice("  * Adding drupal/acsf and acquia/acsf-tools the require array in your composer.json file.");
+    $this->logger->notice("  * Executing the `acsf-init` command, provided by the drupal/acsf module.");
+    $this->logger->notice("  * Adding default factory-hooks to your application.");
+    $this->logger->notice("  * Adding `acsf` to `modules.local.uninstall` in your project.yml");
+    $this->logger->notice("");
+    $this->logger->notice("For more information, see:");
+    $this->logger->notice("<comment>http://blt.readthedocs.io/en/8.x/readme/acsf-setup</comment>");
+  }
+
+  /**
    * Initializes ACSF support for project.
    *
    * @command acsf:init
    *
+   * @aliases acsf
    * @options acsf-version
    */
   public function acsfInitialize($options = ['acsf-version' => '^1.33.0']) {
+    $this->printPreamble();
     $this->acsfHooksInitialize();
     $this->say('Adding acsf module as a dependency...');
-    $this->requireAcsf($options['acsf-version']);
+    $package_options = [
+      'package_name' => 'drupal/acsf',
+      'package_version' => $options['acsf-version'],
+    ];
+    $this->invokeCommand('composer:require', $package_options);
     $this->say("In the future, you may pass in a custom value for acsf-version to override the default version. E.g., blt acsf:init --acsf-version='8.1.x-dev'");
     $this->acsfDrushInitialize();
-    $this->say("<info>ACSF was successfully initialized.</info>");
+    $this->say('Adding acsf-tools drush module as a dependency...');
+    $package_options = [
+      'package_name' => 'acquia/acsf-tools',
+      'package_version' => '^8.1',
+    ];
+    $this->invokeCommand('composer:require', $package_options);
+    $this->say('<comment>ACSF Tools has been added. Some post-install configuration is necessary.</comment>');
+    $this->say('<comment>See /drush/contrib/acsf-tools/README.md. </comment>');
+    $this->say('<info>ACSF was successfully initialized.</info>');
+    $project_yml = $this->getConfigValue('blt.config-files.project');
+    $project_config = YamlMunge::parseFile($project_yml);
+    if (!empty($project_config['modules'])) {
+      $project_config['modules']['local']['uninstall'][] = 'acsf';
+    }
+    YamlMunge::writeFile($project_yml, $project_config);
   }
 
   /**
@@ -33,24 +68,34 @@ class AcsfCommand extends BltTasks {
    * @command acsf:init:drush
    */
   public function acsfDrushInitialize() {
+    $drush8 = $this->getConfigValue('repo.root') . '/vendor/bin/drush8.phar';
+    // @todo Remove when ACSF module supports Drush 9.
+    if (!file_exists($drush8)) {
+      $this->downloadDrush8($drush8);
+    }
     $this->say('Executing initialization command provided acsf module...');
 
-    $result = $this->taskDrush()
-      ->drush('acsf-init')
-      ->alias("")
-      ->includePath("{$this->getConfigValue('docroot')}/modules/contrib/acsf/acsf_init")
+    // Rename vendor/bin/drush to prevent re-dispatch to site local drush bin.
+    $this->_rename('vendor/bin/drush', 'vendor/bin/drush.bak', TRUE);
+    $acsf_include = $this->getConfigValue('docroot') . '/modules/contrib/acsf/acsf_init';
+    $result = $this->taskExecStack()
+      ->exec("$drush8 acsf-init --include=\"$acsf_include\" --root=\"{$this->getConfigValue('docroot')}\" -y")
       ->run();
+    $this->_rename('vendor/bin/drush.bak', 'vendor/bin/drush', TRUE);
 
-    $this->say('<comment>Please add acsf_init as a dependency for your installation profile to ensure that it remains enabled.</comment>');
-    $this->say('<comment>An example alias file for ACSF is located in /drush/site-aliases/example.acsf.aliases.drushrc.php.</comment>');
+    if (!$result->wasSuccessful()) {
+      throw new BltException("Unable to copy ACSF scripts.");
+    }
 
     return $result;
   }
 
   /**
    * Creates "factory-hooks/" directory in project's repo root.
+   *
+   * @command acsf:init:hooks
    */
-  protected function acsfHooksInitialize() {
+  public function acsfHooksInitialize() {
     $defaultAcsfHooks = $this->getConfigValue('blt.root') . '/settings/acsf';
     $projectAcsfHooks = $this->getConfigValue('repo.root') . '/factory-hooks';
 
@@ -68,34 +113,24 @@ class AcsfCommand extends BltTasks {
   }
 
   /**
-   * Installs drupal/acsf via Composer.
+   * Download drush 8 binary.
    *
-   * @throws \Acquia\Blt\Robo\Exceptions\BltException
+   * @param string $destination
+   *   Download destination.
    */
-  protected function requireAcsf($acsfVersion) {
-    $result = $this->taskExec("composer require 'drupal/acsf:{$acsfVersion}'")
-      ->printOutput(TRUE)
-      ->dir($this->getConfigValue('repo.root'))
-      ->run();
-
-    if (!$result->wasSuccessful()) {
-      $this->logger->error("An error occurred while requiring drupal/acsf.");
-      $this->say("This is likely due to an incompatibility with your existing packages.");
-      $confirm = $this->confirm("Should BLT attempt to update all of your Composer packages in order to find a compatible version?");
-      if ($confirm) {
-        $result = $this->taskExec("composer require 'drupal/acsf:{$acsfVersion}' --no-update && composer update")
-          ->printOutput(TRUE)
-          ->dir($this->getConfigValue('repo.root'))
-          ->run();
-        if (!$result->wasSuccessful()) {
-          throw new BltException("Unable to install drupal/acsf package.");
-        }
-      }
-      else {
-        // @todo revert previous file chanages.
-        throw new BltException("Unable to install drupal/acsf package.");
-      }
-    }
+  protected function downloadDrush8($destination) {
+    $file = fopen($destination, 'w');
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL,
+      'https://github.com/drush-ops/drush/releases/download/8.1.15/drush.phar');
+    curl_setopt($ch, CURLOPT_FAILONERROR, TRUE);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
+    curl_setopt($ch, CURLOPT_FILE, $file);
+    curl_exec($ch);
+    curl_close($ch);
+    fclose($file);
+    $this->_chmod($destination, 0755);
   }
 
 }

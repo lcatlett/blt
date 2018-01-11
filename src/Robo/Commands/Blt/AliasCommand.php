@@ -5,8 +5,6 @@ namespace Acquia\Blt\Robo\Commands\Blt;
 use Acquia\Blt\Robo\BltTasks;
 use Acquia\Blt\Robo\Exceptions\BltException;
 use Robo\Contract\VerbosityThresholdInterface;
-use Tivie\OS\Detector;
-use const Tivie\OS\MACOSX;
 
 /**
  * Defines commands for installing and updating the BLT alias.
@@ -19,14 +17,23 @@ class AliasCommand extends BltTasks {
    * @command install-alias
    */
   public function installBltAlias() {
-    $this->createOsxBashProfile();
     if (!$this->getInspector()->isBltAliasInstalled()) {
       $config_file = $this->getInspector()->getCliConfigFile();
-      $this->say("BLT can automatically create a Bash alias to make it easier to run BLT tasks.");
-      $this->say("This alias will be created in <comment>$config_file</comment>.");
-      $confirm = $this->confirm("Install alias?");
-      if ($confirm) {
-        $this->createNewAlias();
+      if (is_null($config_file)) {
+        $this->logger->warning("Could not find your CLI configuration file.");
+        $this->logger->warning("Looked in ~/.zsh, ~/.bash_profile, ~/.bashrc, ~/.profile, and ~/.functions.");
+        $created = $this->createOsxBashProfile();
+        if (!$created) {
+          $this->logger->warning("Please create one of the aforementioned files, or create the BLT alias manually.");
+        }
+      }
+      else {
+        $this->say("BLT can automatically create a Bash alias to make it easier to run BLT tasks.");
+        $this->say("This alias will be created in <comment>$config_file</comment>.");
+        $confirm = $this->confirm("Install alias?");
+        if ($confirm) {
+          $this->createNewAlias();
+        }
       }
     }
     elseif (!$this->isBltAliasUpToDate()) {
@@ -48,7 +55,7 @@ class AliasCommand extends BltTasks {
     $this->say("Installing <comment>blt</comment> alias...");
     $config_file = $this->getInspector()->getCliConfigFile();
     if (is_null($config_file)) {
-      $this->logger->error("Could not install blt alias. No profile found. Tried ~/.zshrc, ~/.bashrc, ~/.bash_profile and ~/.profile.");
+      $this->logger->error("Could not install blt alias. No profile found. Tried ~/.zshrc, ~/.bashrc, ~/.bash_profile, ~/.profile, and ~/.functions.");
     }
     else {
       $canonical_alias = file_get_contents($this->getConfigValue('blt.root') . '/scripts/blt/alias');
@@ -119,12 +126,13 @@ class AliasCommand extends BltTasks {
     $alias_info = $this->getAliasInfo();
     $new_contents = str_replace($alias_info['alias'], $alias_info['canonical_alias'], $alias_info['contents']);
     $bytes = file_put_contents($alias_info['config_file'], $new_contents);
-    if ($bytes) {
+    if (!$bytes) {
       throw new BltException("Could not update BLT alias in {$alias_info['config_file']}.");
     }
 
     $this->say("<info>The <comment>blt</comment> alias was updated in {$alias_info['config_file']}");
     $this->say("Execute <comment>source {$alias_info['config_file']}</comment> to update your terminal session.");
+    $this->say("You may then execute <comment>blt</comment> commands.");
   }
 
   /**
@@ -159,22 +167,27 @@ class AliasCommand extends BltTasks {
    * Creates a ~/.bash_profile on OSX if one does not exist.
    */
   protected function createOsxBashProfile() {
-    $os_detector = new Detector();
-    $os_type = $os_detector->getType();
-    if ($os_type == MACOSX) {
-      $user = posix_getpwuid(posix_getuid());
-      $home_dir = $user['dir'];
-      $bash_profile = $home_dir . '/.bash_profile';
-      if (!file_exists($bash_profile)) {
-        $result = $this->taskFilesystemStack()
-          ->touch($bash_profile)
-          ->run();
+    if ($this->getInspector()->isOsx()) {
+      $continue = $this->confirm("Would you like to create ~/.bash_profile?");
+      if ($continue) {
+        $user = posix_getpwuid(posix_getuid());
+        $home_dir = $user['dir'];
+        $bash_profile = $home_dir . '/.bash_profile';
+        if (!file_exists($bash_profile)) {
+          $result = $this->taskFilesystemStack()
+            ->touch($bash_profile)
+            ->run();
 
-        if (!$result->wasSuccessful()) {
-          throw new BltException("Could not create $bash_profile.");
+          if (!$result->wasSuccessful()) {
+            throw new BltException("Could not create $bash_profile.");
+          }
+
+          return TRUE;
         }
       }
     }
+
+    return FALSE;
   }
 
 }

@@ -1,5 +1,270 @@
 # Change Log
 
+## [8.9.1](https://github.com/acquia/blt/tree/8.9.1) (2017-08-08)
+[Full Changelog](https://github.com/acquia/blt/compare/8.9.0...8.9.1)
+
+**Implemented enhancements:**
+
+- Manual setup required for sync:refresh [\#1875](https://github.com/acquia/blt/issues/1875)
+- Add ACSF-Tools package require in acsf:init [\#1868](https://github.com/acquia/blt/issues/1868)
+- Document that SimpleSAML on PHP 7 should only use database session storage [\#1857](https://github.com/acquia/blt/issues/1857)
+- BLT sync:refresh Should Include More Commands [\#1850](https://github.com/acquia/blt/issues/1850)
+- Increase Robo Executor Time Out or Make it configurable [\#1840](https://github.com/acquia/blt/issues/1840)
+- Allow --exclude-paths to be configured for sync:files [\#1835](https://github.com/acquia/blt/issues/1835)
+- Switch to Xenial for Drupal VM base box [\#1830](https://github.com/acquia/blt/issues/1830)
+- Allow group options in phpunit [\#1827](https://github.com/acquia/blt/issues/1827)
+- Lint the TravisCI YAML file [\#1812](https://github.com/acquia/blt/issues/1812)
+- Allow Multiple Configuration Management Strategies [\#1809](https://github.com/acquia/blt/issues/1809)
+- Evaluate the inclusion of acquia\_cli tool [\#1800](https://github.com/acquia/blt/issues/1800)
+- Allow PHPCS to use DrupalPractice standard [\#1786](https://github.com/acquia/blt/issues/1786)
+- Allow deploy\_updates cloud hook function to accept a site parameter [\#1718](https://github.com/acquia/blt/issues/1718)
+- Allow PHPCS to Sniff Behat Context Files [\#1523](https://github.com/acquia/blt/issues/1523)
+- Re-ignore Behat during PHPCS sniffs. [\#1884](https://github.com/acquia/blt/pull/1884) ([grasmash](https://github.com/grasmash))
+- Allowing verbose output from PHPUnit. [\#1883](https://github.com/acquia/blt/pull/1883) ([grasmash](https://github.com/grasmash))
+- Fixes \#1787: Better support using BLT for testing core and contrib with PHPUnit. [\#1882](https://github.com/acquia/blt/pull/1882) ([grasmash](https://github.com/grasmash))
+- Fixes \#1800: Suggest acquia\_cli tool. [\#1881](https://github.com/acquia/blt/pull/1881) ([grasmash](https://github.com/grasmash))
+- Fixes \#1875: Manual setup required for sync:refresh. [\#1877](https://github.com/acquia/blt/pull/1877) ([grasmash](https://github.com/grasmash))
+- Defaults Simplesaml to database storage. [\#1876](https://github.com/acquia/blt/pull/1876) ([typhonius](https://github.com/typhonius))
+- BLT-1523: allowing behat php files to be sniffed by phpcs. [\#1873](https://github.com/acquia/blt/pull/1873) ([mikemadison13](https://github.com/mikemadison13))
+- Acsf init dev [\#1869](https://github.com/acquia/blt/pull/1869) ([msherron](https://github.com/msherron))
+- Adding shell to doctor output. [\#1865](https://github.com/acquia/blt/pull/1865) ([grasmash](https://github.com/grasmash))
+- Fixes \#1840: Increase Robo Executor Time Out or Make it configurable. [\#1861](https://github.com/acquia/blt/pull/1861) ([grasmash](https://github.com/grasmash))
+- Adds default memcache prefix for simplesaml. [\#1856](https://github.com/acquia/blt/pull/1856) ([typhonius](https://github.com/typhonius))
+- BLT-1850: adding setup:composer:install and frontend. [\#1851](https://github.com/acquia/blt/pull/1851) ([mikemadison13](https://github.com/mikemadison13))
+- Fixes \#1835: provide --exclude-paths configuration key. [\#1846](https://github.com/acquia/blt/pull/1846) ([bobbygryzynger](https://github.com/bobbygryzynger))
+- Fix coding standards in simplesamlphp acquia config [\#1832](https://github.com/acquia/blt/pull/1832) ([christopher-hopper](https://github.com/christopher-hopper))
+- Fixes \#1830: Switch Drupal VM to Xenial \(16.04 LTS\) to match Acquia Cloud. [\#1831](https://github.com/acquia/blt/pull/1831) ([geerlingguy](https://github.com/geerlingguy))
+- Prevent doctrine/inflector from advancing to 1.2.x. [\#1829](https://github.com/acquia/blt/pull/1829) ([timcosgrove](https://github.com/timcosgrove))
+- Add additional option support for phpunit. [\#1828](https://github.com/acquia/blt/pull/1828) ([steveworley](https://github.com/steveworley))
+- Replacing PHP filesets with php.xml.dist. [\#1820](https://github.com/acquia/blt/pull/1820) ([grasmash](https://github.com/grasmash))
+- Fixes \#1786: Allow PHPCS to use DrupalPractice standard. [\#1819](https://github.com/acquia/blt/pull/1819) ([grasmash](https://github.com/grasmash))
+- Fixes \#1004: Configurable test steps for fresh installs and live dbs. [\#1818](https://github.com/acquia/blt/pull/1818) ([grasmash](https://github.com/grasmash))
+- Allow Drupal-VM config flexibility. [\#1817](https://github.com/acquia/blt/pull/1817) ([dpagini](https://github.com/dpagini))
+- Allowing $split to be overridden. [\#1804](https://github.com/acquia/blt/pull/1804) ([grasmash](https://github.com/grasmash))
+- Return to containerized Travis builds [\#1802](https://github.com/acquia/blt/pull/1802) ([danepowell](https://github.com/danepowell))
+- Moving ExampleTest.php to examples:init command. [\#1783](https://github.com/acquia/blt/pull/1783) ([dpagini](https://github.com/dpagini))
+- Provide initial template for Gitlab Pipelines [\#1733](https://github.com/acquia/blt/pull/1733) ([snufkin](https://github.com/snufkin))
+
+**Fixed bugs:**
+
+- Config split ignored during config-import on Acquia cloud [\#1891](https://github.com/acquia/blt/issues/1891)
+- sync:files fails due to non-interactive shell [\#1874](https://github.com/acquia/blt/issues/1874)
+- Parameters not passed when invokeCommand is used with @executeInDrupalVM [\#1866](https://github.com/acquia/blt/issues/1866)
+- validate:phpcs:files fails to find additional violations after an initial violation is found [\#1855](https://github.com/acquia/blt/issues/1855)
+- BLT's deploy\_updates bash function doesn't define the environment [\#1854](https://github.com/acquia/blt/issues/1854)
+- BLT Sync does not permit drush prompt [\#1852](https://github.com/acquia/blt/issues/1852)
+- Files are synced to a subdirectory of files. [\#1845](https://github.com/acquia/blt/issues/1845)
+- Make sync:db non interactive on Travis. [\#1841](https://github.com/acquia/blt/issues/1841)
+- Incorrect script path causes Probo builds to fail. [\#1824](https://github.com/acquia/blt/issues/1824)
+- PHPUnit Fatal Error Doesn't Fail Build [\#1822](https://github.com/acquia/blt/issues/1822)
+- blt sync:refresh still prompts for confirmation when `-y` is supplied. [\#1810](https://github.com/acquia/blt/issues/1810)
+- Deploy command fails silently [\#1807](https://github.com/acquia/blt/issues/1807)
+- Behat tests fail out of the box with Pipelines [\#1799](https://github.com/acquia/blt/issues/1799)
+- checkDrupalVm:remote-host always fails [\#1797](https://github.com/acquia/blt/issues/1797)
+- sync:refresh doesn't support multisites [\#1580](https://github.com/acquia/blt/issues/1580)
+- Sniffing all PHPCS files after commit. [\#1894](https://github.com/acquia/blt/pull/1894) ([grasmash](https://github.com/grasmash))
+- Fixes \#1891: Config split ignored during config-import on Acquia cloud. [\#1893](https://github.com/acquia/blt/pull/1893) ([grasmash](https://github.com/grasmash))
+- Fixes \#1874: sync:files fails due to non-interactive shell. [\#1880](https://github.com/acquia/blt/pull/1880) ([grasmash](https://github.com/grasmash))
+- Fixes \#1870: PHPCS Hanging. [\#1871](https://github.com/acquia/blt/pull/1871) ([grasmash](https://github.com/grasmash))
+- BLT-1852 assuming -y when prompting while executing something in blt [\#1862](https://github.com/acquia/blt/pull/1862) ([alex-moreno](https://github.com/alex-moreno))
+- Fixes \#1854: BLT's deploy\_updates bash function doesn't define the environment. [\#1860](https://github.com/acquia/blt/pull/1860) ([grasmash](https://github.com/grasmash))
+- Fixes \#1841: blt sync issue exit code 75. [\#1859](https://github.com/acquia/blt/pull/1859) ([grasmash](https://github.com/grasmash))
+- Fixes \#1855: validate:phpcs:files fails to find additional violations after an initial violation is found. [\#1858](https://github.com/acquia/blt/pull/1858) ([grasmash](https://github.com/grasmash))
+- Fixes \#1845: provide trailing slash for files path. [\#1847](https://github.com/acquia/blt/pull/1847) ([bobbygryzynger](https://github.com/bobbygryzynger))
+- Fixes \#1843: use invokeCommand on simplesamlphp:deploy:config. [\#1844](https://github.com/acquia/blt/pull/1844) ([bobbygryzynger](https://github.com/bobbygryzynger))
+- Preventing Probo builds from failing due to incorrect path. [\#1825](https://github.com/acquia/blt/pull/1825) ([jkaeser](https://github.com/jkaeser))
+- Fixes \#1822: PHPUnit Fatal Error Doesn't Fail Build. [\#1823](https://github.com/acquia/blt/pull/1823) ([grasmash](https://github.com/grasmash))
+- Fixes \#1810: blt sync:refresh still prompts for confirmation when `-y` is supplied. [\#1815](https://github.com/acquia/blt/pull/1815) ([grasmash](https://github.com/grasmash))
+- Fixes \#1797: checkDrupalVm:remote-host always fails. [\#1814](https://github.com/acquia/blt/pull/1814) ([grasmash](https://github.com/grasmash))
+
+**Closed issues:**
+
+- SAML configuration copying fails during the deploy task [\#1843](https://github.com/acquia/blt/issues/1843)
+- Simplesamlphp Acquia config file needs improvment [\#1837](https://github.com/acquia/blt/issues/1837)
+
+**Misc merged pull requests**
+
+- Issue \#1875: Execute all sync commands outside VM. [\#1892](https://github.com/acquia/blt/pull/1892) ([danepowell](https://github.com/danepowell))
+- Fixes \#849: Documentation: frontend build process. [\#1879](https://github.com/acquia/blt/pull/1879) ([grasmash](https://github.com/grasmash))
+- Minor docs update [\#1867](https://github.com/acquia/blt/pull/1867) ([danepowell](https://github.com/danepowell))
+- xcodebuild requires sudo [\#1842](https://github.com/acquia/blt/pull/1842) ([alex-moreno](https://github.com/alex-moreno))
+- Documenting Probo.CI setup steps. [\#1826](https://github.com/acquia/blt/pull/1826) ([jkaeser](https://github.com/jkaeser))
+- Normalize and covert svg line endings to native on checkout [\#1801](https://github.com/acquia/blt/pull/1801) ([zweishar](https://github.com/zweishar))
+- Allow non-200 connections when waiting for server for tests. [\#1798](https://github.com/acquia/blt/pull/1798) ([danepowell](https://github.com/danepowell))
+- Upgrading wikimedia/composer-merge-plugin to 1.4.1. [\#1795](https://github.com/acquia/blt/pull/1795) ([grasmash](https://github.com/grasmash))
+- Allow extra args to be passed into launchChrome. [\#1794](https://github.com/acquia/blt/pull/1794) ([thom8](https://github.com/thom8))
+
+## [8.9.0](https://github.com/acquia/blt/tree/8.9.0) (2017-07-12)
+[Full Changelog](https://github.com/acquia/blt/compare/8.9.0-rc3...8.9.0)
+
+**Fixed bugs:**
+
+- config-split cm strategy always uses sync as config directory key [\#1775](https://github.com/acquia/blt/issues/1775)
+
+**Misc merged pull requests**
+
+- Remove duplicate simplesamlphp documentation. [\#1791](https://github.com/acquia/blt/pull/1791) ([greylabel](https://github.com/greylabel))
+- Updating documentation. [\#1789](https://github.com/acquia/blt/pull/1789) ([grasmash](https://github.com/grasmash))
+
+
+## [8.9.0-rc3](https://github.com/acquia/blt/tree/8.9.0-rc3) (2017-07-11)
+[Full Changelog](https://github.com/acquia/blt/compare/8.9.0-rc2...8.9.0-rc3)
+
+**Implemented enhancements:**
+
+- Throw exception if minimum PHP version is unmet. [\#1785](https://github.com/acquia/blt/pull/1785) ([grasmash](https://github.com/grasmash))
+- Updating settings command. [\#1782](https://github.com/acquia/blt/pull/1782) ([dpagini](https://github.com/dpagini))
+- Adding version constant replacement to release command. [\#1774](https://github.com/acquia/blt/pull/1774) ([grasmash](https://github.com/grasmash))
+
+**Fixed bugs:**
+
+- config-split cm strategy always uses sync as config directory key [\#1775](https://github.com/acquia/blt/issues/1775)
+- blt vm writes to bashrc in DrupalVM and leaves it unwritable [\#1771](https://github.com/acquia/blt/issues/1771)
+- composer create-project fails on Twig patch application [\#1770](https://github.com/acquia/blt/issues/1770)
+- Updating behat copy target. [\#1784](https://github.com/acquia/blt/pull/1784) ([dpagini](https://github.com/dpagini))
+- Fixes \#1772: Increasing Composer plugin timeout to 1hr. [\#1776](https://github.com/acquia/blt/pull/1776) ([grasmash](https://github.com/grasmash))
+- Fixes \#1771: blt vm writes to bashrc in DrupalVM and leaves it unwritable. [\#1773](https://github.com/acquia/blt/pull/1773) ([grasmash](https://github.com/grasmash))
+
+**Misc merged pull requests**
+
+- Update example tests path to match repo structure. [\#1780](https://github.com/acquia/blt/pull/1780) ([greylabel](https://github.com/greylabel))
+- Fix typo in Probo CI command description. [\#1779](https://github.com/acquia/blt/pull/1779) ([greylabel](https://github.com/greylabel))
+
+
+## [8.9.0-rc1](https://github.com/acquia/blt/tree/8.9.0-rc1) (2017-06-29)
+[Full Changelog](https://github.com/acquia/blt/compare/8.9.0-beta6...8.9.0-rc1)
+
+**Implemented enhancements:**
+
+- Adding consolidation/config. [\#1739](https://github.com/acquia/blt/pull/1739) ([grasmash](https://github.com/grasmash))
+- Checking that class exists before loading Fileset. [\#1737](https://github.com/acquia/blt/pull/1737) ([grasmash](https://github.com/grasmash))
+
+**Fixed bugs:**
+
+- Fixing bug in setting of deploy tag. [\#1741](https://github.com/acquia/blt/pull/1741) ([grasmash](https://github.com/grasmash))
+- Fixes \#1722: Travis chrome behat setup. [\#1736](https://github.com/acquia/blt/pull/1736) ([grasmash](https://github.com/grasmash))
+
+**Misc merged pull requests**
+
+- Adding frontend task to setup:build. [\#1740](https://github.com/acquia/blt/pull/1740) ([grasmash](https://github.com/grasmash))
+- Fix update message. [\#1738](https://github.com/acquia/blt/pull/1738) ([arknoll](https://github.com/arknoll))
+- Revert "Defaulting web driver to Selenium." [\#1735](https://github.com/acquia/blt/pull/1735) ([grasmash](https://github.com/grasmash))
+
+
+## [8.9.0-beta6](https://github.com/acquia/blt/tree/8.9.0-beta6) (2017-06-27)
+[Full Changelog](https://github.com/acquia/blt/compare/8.9.0-beta5...8.9.0-beta6)
+
+**Implemented enhancements:**
+
+- Unneeded .gitignore line about drupal console. [\#1727](https://github.com/acquia/blt/issues/1727)
+- Robo feature request: total "setup" time [\#1719](https://github.com/acquia/blt/issues/1719)
+- Copying behat.yml and example.local.yml as part of setup:behat. [\#1732](https://github.com/acquia/blt/pull/1732) ([grasmash](https://github.com/grasmash))
+- Printing metadata for hook invokations. [\#1731](https://github.com/acquia/blt/pull/1731) ([grasmash](https://github.com/grasmash))
+- Fixes \#1719: Robo feature request: total "setup" time. [\#1730](https://github.com/acquia/blt/pull/1730) ([grasmash](https://github.com/grasmash))
+- Defaulting web driver to Selenium. [\#1729](https://github.com/acquia/blt/pull/1729) ([grasmash](https://github.com/grasmash))
+- \#1727 Removes drupal console related gitignore line. [\#1728](https://github.com/acquia/blt/pull/1728) ([marvil07](https://github.com/marvil07))
+- Adds probo.ci settings. [\#1726](https://github.com/acquia/blt/pull/1726) ([typhonius](https://github.com/typhonius))
+- Normalize variable usage in travis.yml. [\#1720](https://github.com/acquia/blt/pull/1720) ([greylabel](https://github.com/greylabel))
+- Preventing duplicate warnings from being displayed. [\#1716](https://github.com/acquia/blt/pull/1716) ([grasmash](https://github.com/grasmash))
+
+**Fixed bugs:**
+
+- Connects to \#1528: BLT's merged dependencies not installed during deploy [\#1634](https://github.com/acquia/blt/issues/1634)
+- Allowing specific Behat features to be tested. [\#1723](https://github.com/acquia/blt/pull/1723) ([grasmash](https://github.com/grasmash))
+- Implementing exit\_early after composer install. [\#1721](https://github.com/acquia/blt/pull/1721) ([dpagini](https://github.com/dpagini))
+
+**Closed issues:**
+
+- Unable to run tests via the simpletest UI [\#1724](https://github.com/acquia/blt/issues/1724)
+
+**Misc merged pull requests**
+
+- Issue \#1724: Fixed missing dev dependency. [\#1725](https://github.com/acquia/blt/pull/1725) ([danepowell](https://github.com/danepowell))
+- Changing drupalextension version to work with Lightning tests. [\#1717](https://github.com/acquia/blt/pull/1717) ([grasmash](https://github.com/grasmash))
+- Ensure travis commands run as 'CI' environment. [\#1715](https://github.com/acquia/blt/pull/1715) ([dpagini](https://github.com/dpagini))
+
+
+## [8.9.0-beta5](https://github.com/acquia/blt/tree/8.9.0-beta5) (2017-06-21)
+[Full Changelog](https://github.com/acquia/blt/compare/8.9.0-beta4...8.9.0-beta5)
+
+**Implemented enhancements:**
+
+- Connects to \#1711: Adding config:get and config:dump commmands. [\#1714](https://github.com/acquia/blt/pull/1714) ([grasmash](https://github.com/grasmash))
+- Fixes \#1709: Adding notifications regarding manual upgrade path. [\#1713](https://github.com/acquia/blt/pull/1713) ([grasmash](https://github.com/grasmash))
+
+**Fixed bugs:**
+
+- BLT Upgrade to 8.9.0-beta4 Issues [\#1707](https://github.com/acquia/blt/issues/1707)
+- New plugin.php is not executed after BLT update [\#1683](https://github.com/acquia/blt/issues/1683)
+- Fixes \#1683: Check schema version before command execution. [\#1710](https://github.com/acquia/blt/pull/1710) ([grasmash](https://github.com/grasmash))
+
+**Misc merged pull requests**
+
+- Fix docs for creating a deploy-exclude.txt file. [\#1712](https://github.com/acquia/blt/pull/1712) ([greylabel](https://github.com/greylabel))
+- Fixes \#1707: BLT Upgrade to 8.9.0-beta4 issues. [\#1708](https://github.com/acquia/blt/pull/1708) ([grasmash](https://github.com/grasmash))
+
+
+## [8.9.0-beta4](https://github.com/acquia/blt/tree/8.9.0-beta4) (2017-06-20)
+[Full Changelog](https://github.com/acquia/blt/compare/8.9.0-beta3...8.9.0-beta4)
+
+**Implemented enhancements:**
+
+- Remove ExampleCommand and ExampleHook from template, require `blt examples:init` or something. [\#1669](https://github.com/acquia/blt/issues/1669)
+- Fixes \#1669: Remove ExampleCommand and ExampleHook from template, require `blt examples:init` or something. [\#1697](https://github.com/acquia/blt/pull/1697) ([grasmash](https://github.com/grasmash))
+- Fixes \#1675: Setting cm.core.dirs.vcs to cm.core.dirs.sync. [\#1695](https://github.com/acquia/blt/pull/1695) ([grasmash](https://github.com/grasmash))
+- Issue \#1681: Set vagrant exec default directory in BLT Vagrantfile. [\#1688](https://github.com/acquia/blt/pull/1688) ([geerlingguy](https://github.com/geerlingguy))
+
+**Fixed bugs:**
+
+- blt tests failure [\#1698](https://github.com/acquia/blt/issues/1698)
+- Behat Tests Fail [\#1681](https://github.com/acquia/blt/issues/1681)
+- Features Import Fails [\#1679](https://github.com/acquia/blt/issues/1679)
+- Git Hooks Failing on Commit [\#1677](https://github.com/acquia/blt/issues/1677)
+- setup commands not using multisite param [\#1676](https://github.com/acquia/blt/issues/1676)
+- BLT Fails to run config-import sync on cloudhooks [\#1675](https://github.com/acquia/blt/issues/1675)
+- Config Import Incorrect On Multi-site install [\#1674](https://github.com/acquia/blt/issues/1674)
+- Fixes \#1698: blt tests failure. [\#1700](https://github.com/acquia/blt/pull/1700) ([grasmash](https://github.com/grasmash))
+- Fixing early return. [\#1696](https://github.com/acquia/blt/pull/1696) ([grasmash](https://github.com/grasmash))
+- Connects to \#1681: Fixing Vagrantfile syntax. [\#1694](https://github.com/acquia/blt/pull/1694) ([grasmash](https://github.com/grasmash))
+- Fixes \#1675: Use cm.core.key everywhere. [\#1693](https://github.com/acquia/blt/pull/1693) ([grasmash](https://github.com/grasmash))
+- Throwing BltException whenever invokeCommand\(\) fails. [\#1692](https://github.com/acquia/blt/pull/1692) ([grasmash](https://github.com/grasmash))
+- Fixes \#1674: Config Import Incorrect On Multi-site install. [\#1691](https://github.com/acquia/blt/pull/1691) ([grasmash](https://github.com/grasmash))
+- Fixes \#1681: Expand Vagrantfile properties. [\#1690](https://github.com/acquia/blt/pull/1690) ([grasmash](https://github.com/grasmash))
+- BLT-1679: correcting features import in config import process. [\#1680](https://github.com/acquia/blt/pull/1680) ([mikemadison13](https://github.com/mikemadison13))
+
+**Closed issues:**
+
+- Instructions to generate a custom profile don't work [\#1682](https://github.com/acquia/blt/issues/1682)
+- Unable to set permissions for site directories.  [\#1678](https://github.com/acquia/blt/issues/1678)
+- Documentation gap for alternative local development environments [\#1636](https://github.com/acquia/blt/issues/1636)
+
+**Misc merged pull requests**
+
+- Fixes \#1636: Documentation gap for alternative local development environments. [\#1699](https://github.com/acquia/blt/pull/1699) ([grasmash](https://github.com/grasmash))
+- Fix a dead link in the tests directory to point to the updated URL on… [\#1689](https://github.com/acquia/blt/pull/1689) ([gabe-connolly](https://github.com/gabe-connolly))
+- Fixes \#1682: Instructions to generate a custom profile don't work. [\#1686](https://github.com/acquia/blt/pull/1686) ([grasmash](https://github.com/grasmash))
+- Adding @todos. [\#1684](https://github.com/acquia/blt/pull/1684) ([grasmash](https://github.com/grasmash))
+
+
+## [8.9.0-beta3](https://github.com/acquia/blt/tree/8.9.0-beta3) (2017-06-15)
+[Full Changelog](https://github.com/acquia/blt/compare/8.9.0-beta2...8.9.0-beta3)
+
+**Implemented enhancements:**
+
+- Ignoring \*.min.js in validation commands. [\#1672](https://github.com/acquia/blt/pull/1672) ([grasmash](https://github.com/grasmash))
+- Adding -y param to `blt:create-project` call. [\#1670](https://github.com/acquia/blt/pull/1670) ([grasmash](https://github.com/grasmash))
+- Run the appropriate behat tags when testing on pipelines. [\#1665](https://github.com/acquia/blt/pull/1665) ([arknoll](https://github.com/arknoll))
+
+**Fixed bugs:**
+
+- Setting tests.run-server to false by default. [\#1671](https://github.com/acquia/blt/pull/1671) ([grasmash](https://github.com/grasmash))
+
+**Misc merged pull requests**
+
+- Fix drush site install command to disable update status module. [\#1663](https://github.com/acquia/blt/pull/1663) ([arknoll](https://github.com/arknoll))
+- Adding -y param to `blt update` call. [\#1662](https://github.com/acquia/blt/pull/1662) ([grasmash](https://github.com/grasmash))
+
+
 ## [8.9.0-beta2](https://github.com/acquia/blt/tree/8.9.0-beta2) (2017-06-13)
 [Full Changelog](https://github.com/acquia/blt/compare/8.9.0-beta1...8.9.0-beta2)
 

@@ -101,7 +101,6 @@ class ValidateHook implements ConfigAwareInterface, LoggerAwareInterface, Inspec
    */
   public function validateMySqlAvailable() {
     if (!$this->getInspector()->isMySqlAvailable()) {
-      // @todo Prompt to fix.
       throw new BltException("MySql is not available. Please run `blt doctor` to diagnose the issue.");
     }
   }
@@ -124,11 +123,11 @@ class ValidateHook implements ConfigAwareInterface, LoggerAwareInterface, Inspec
   /**
    * Validates that current PHP process is being executed inside of the VM.
    *
-   * @hook validate validateInsideVm
+   * @hook validate validateVmConfig
    */
   public function validateInsideVm() {
-    if ($this->getInspector()->isDrupalVmLocallyInitialized() && !$this->getInspector()->isVmCli()) {
-      throw new BltException("You must run this command inside Drupal VM, or else do not use Drupal VM at all. Execute `vagrant ssh` and then execute the command, or else change drush.aliases.local in blt/project.local.yml.");
+    if ($this->getInspector()->isDrupalVmLocallyInitialized() && $this->getInspector()->isDrupalVmBooted() && !$this->getInspector()->isDrupalVmConfigValid()) {
+      throw new BltException("Drupal VM configuration is invalid.");
     }
   }
 

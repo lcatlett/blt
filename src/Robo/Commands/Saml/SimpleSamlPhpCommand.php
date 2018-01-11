@@ -3,6 +3,7 @@
 namespace Acquia\Blt\Robo\Commands\Saml;
 
 use Acquia\Blt\Robo\BltTasks;
+use Acquia\Blt\Robo\Common\YamlMunge;
 use Acquia\Blt\Robo\Exceptions\BltException;
 use Robo\Contract\VerbosityThresholdInterface;
 use Symfony\Component\Console\Helper\FormatterHelper;
@@ -34,6 +35,7 @@ class SimpleSamlPhpCommand extends BltTasks {
    * Initializes SimpleSAMLphp for project.
    *
    * @command simplesamlphp:init
+   * @throws \Acquia\Blt\Robo\Exceptions\BltException
    */
   public function initializeSimpleSamlPhp() {
     if (!$this->getInspector()->isSimpleSamlPhpInstalled()) {
@@ -41,6 +43,7 @@ class SimpleSamlPhpCommand extends BltTasks {
       $this->initializeConfig();
       $this->setSimpleSamlPhpInstalled();
       $this->symlinkDocrootToLibDir();
+      $this->addHtaccessPatch();
     }
     else {
       $this->say('SimpleSAMLphp has already been initialized by BLT.');
@@ -56,23 +59,18 @@ class SimpleSamlPhpCommand extends BltTasks {
   protected function requireModule() {
     $this->say('Adding SimpleSAMLphp Auth module as a dependency...');
 
-    $result = $this->taskExec("composer require")
-      ->arg('drupal/simplesamlphp_auth:^3.0')
-      ->printOutput(TRUE)
-      ->detectInteractive()
-      ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
-      ->dir($this->getConfigValue('repo.root'))
-      ->run();
-
-    if (!$result->wasSuccessful()) {
-      throw new BltException("Unable to install drupal/simplesamlphp_auth package.");
-    }
+    $package_options = [
+      'package_name' => 'drupal/simplesamlphp_auth',
+      'package_version' => '^3.0',
+    ];
+    $this->invokeCommand('composer:require', $package_options);
   }
 
   /**
    * Copies configuration templates from SimpleSamlPHP to the repo root.
    *
    * @command simplesamlphp:config:init
+   * @throws \Acquia\Blt\Robo\Exceptions\BltException
    */
   protected function initializeConfig() {
     $destinationDirectory = "{$this->repoRoot}/simplesamlphp/config";
@@ -113,6 +111,7 @@ class SimpleSamlPhpCommand extends BltTasks {
    * Copies custom config files to SimpleSamlPHP in deploy artifact.
    *
    * @command simplesamlphp:deploy:config
+   * @throws BltException
    */
   public function simpleSamlPhpDeployConfig() {
     $this->say('Copying config files to the appropriate place in simplesamlphp library in the deploy artifact...');
@@ -136,29 +135,27 @@ class SimpleSamlPhpCommand extends BltTasks {
 
   /**
    * Sets value in project.yml to let targets know simplesamlphp is installed.
+   * @throws \Acquia\Blt\Robo\Exceptions\BltException
    */
   protected function setSimpleSamlPhpInstalled() {
-    $composerBin = $this->getConfigValue('composer.bin');
     $project_yml = $this->getConfigValue('blt.config-files.project');
+
     $this->say("Updating ${project_yml}...");
 
-    $result = $this->taskExec("{$composerBin}/yaml-cli update:value")
-      ->arg($project_yml)
-      ->arg('simplesamlphp')
-      ->arg('TRUE')
-      ->printOutput(TRUE)
-      ->detectInteractive()
-      ->dir($this->getConfigValue('repo.root'))
-      ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
-      ->run();
+    $project_config = YamlMunge::parseFile($project_yml);
+    $project_config['simplesamlphp'] = TRUE;
 
-    if (!$result->wasSuccessful()) {
+    try {
+      YamlMunge::writeFile($project_yml, $project_config);
+    }
+    catch (\Exception $e) {
       throw new BltException("Unable to update $project_yml.");
     }
   }
 
   /**
    * Creates a symlink from the docroot to the web accessible library dir.
+   * @throws \Acquia\Blt\Robo\Exceptions\BltException
    */
   protected function symlinkDocrootToLibDir() {
     $docroot = $this->getConfigValue('docroot');
@@ -178,6 +175,7 @@ class SimpleSamlPhpCommand extends BltTasks {
    * Copies customized config files into vendored SimpleSamlPHP.
    *
    * @command simplesamlphp:build:config
+   * @throws \Acquia\Blt\Robo\Exceptions\BltException
    */
   public function simpleSamlPhpBuildConfig() {
     $this->say('Copying config files to the appropriate place in simplesamlphp library...');
@@ -202,11 +200,9 @@ class SimpleSamlPhpCommand extends BltTasks {
    * Outputs a message to edit the new config files.
    */
   protected function outputCompleteSetupInstructions() {
-    $docroot = $this->getConfigValue('docroot');
     $instructions = [
       'To complete the setup you must manually modify several files:',
       '',
-      "* ${docroot}/.htaccess",
       "* {$this->repoRoot}/simplesamlphp/config/acquia_config.php",
       "* {$this->repoRoot}/simplesamlphp/config/authsources.php",
       "* {$this->repoRoot}/simplesamlphp/metadata/saml20-idp-remote.php",
@@ -219,6 +215,25 @@ class SimpleSamlPhpCommand extends BltTasks {
     ];
     $formattedBlock = $this->formatter->formatBlock($instructions, 'comment', TRUE);
     $this->writeln($formattedBlock);
+  }
+
+  /**
+   * Add a patch to .htaccess.
+   */
+  protected function addHtaccessPatch() {
+    $this->taskFilesystemStack()
+      ->copy($this->bltRoot . "/scripts/simplesamlphp/htaccess-saml.patch",
+        $this->repoRoot . "/patches/htaccess-saml.patch")
+      ->run();
+    $composer_json = json_decode(file_get_contents($this->getConfigValue('repo.root') . '/composer.json'));
+    $composer_json->scripts->{"post-drupal-scaffold-cmd"}[] = "cd docroot && patch -p1 <../patches/htaccess-saml.patch";
+    file_put_contents($this->getConfigValue('repo.root') . '/composer.json',
+      json_encode($composer_json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    $this->taskExecStack()
+      ->dir($this->getConfigValue('repo.roou'))
+      ->exec("composer post-drupal-scaffold-cmd")
+      ->run();
+    // @todo throw exceptions.
   }
 
 }

@@ -14,28 +14,42 @@ class ConfigCommand extends BltTasks {
    * Update current database to reflect the state of the Drupal file system.
    *
    * @command setup:update
+   * @aliases su
    */
   public function update() {
-    $status_code = $this->invokeCommands(['setup:config-import']);
-
-    return $status_code;
+    $this->invokeCommands(['setup:config-import', 'setup:toggle-modules']);
   }
 
   /**
    * Imports configuration from the config directory according to cm.strategy.
    *
    * @command setup:config-import
+   * @aliases sci
+   *
+   * @validateDrushConfig
    */
   public function import() {
     $strategy = $this->getConfigValue('cm.strategy');
     $cm_core_key = $this->getConfigValue('cm.core.key');
+    $this->logConfig($this->getConfigValue('cm'), 'cm');
 
     if ($strategy != 'none') {
       $this->invokeHook('pre-config-import');
 
+      // If using core-only or config-split strategies, first check to see if
+      // required config is exported.
+      if (in_array($strategy, ['core-only', 'config-split'])) {
+        $core_config_file = $this->getConfigValue('docroot') . '/' . $this->getConfigValue("cm.core.dirs.$cm_core_key.path") . '/core.extension.yml';
+
+        if (!file_exists($core_config_file)) {
+          $this->logger->warning("BLT will NOT import configuration, $core_config_file was not found.");
+          // This is not considered a failure.
+          return 0;
+        }
+      }
+
       $task = $this->taskDrush()
         ->stopOnFail()
-        ->assume(TRUE)
         // Sometimes drush forgets where to find its aliases.
         ->drush("cc")->arg('drush')
         // Rebuild caches in case service definitions have changed.
@@ -65,21 +79,18 @@ class ConfigCommand extends BltTasks {
       }
 
       $task->drush("cache-rebuild");
-      $task->run();
-
-      $this->checkFeaturesOverrides();
-
-      // Check for configuration overrides.
-      if (!$this->getConfigValue('cm.allow-overrides')) {
-        $this->say("Checking for config overrides...");
-        $config_overrides = $this->taskDrush()
-          ->assume(FALSE)
-          ->drush("cex")
-          ->arg('sync');
-        if (!$config_overrides->run()->wasSuccessful()) {
-          throw new BltException("Configuration in the database does not match configuration on disk. You must re-export configuration to capture the changes. This could also indicate a problem with the import process, such as changed field storage for a field with existing content. To permit configuration overrides, set cm.allow-overrides to true in blt/project.yml.");
-        }
+      $result = $task->run();
+      if (!$result->wasSuccessful()) {
+        throw new BltException("Failed to import configuration!");
       }
+
+      if ($this->getConfigValue('cm.features.no-overrides')) {
+        $this->logger->warning("Features override checks are currently disabled due to a Drush 9 incompatibility.");
+        // @codingStandardsIgnoreLine
+        // $this->checkFeaturesOverrides();
+      }
+
+      $this->checkConfigOverrides($cm_core_key);
 
       $result = $this->invokeHook('post-config-import');
 
@@ -94,10 +105,7 @@ class ConfigCommand extends BltTasks {
    * @param string $cm_core_key
    */
   protected function importCoreOnly($task, $cm_core_key) {
-    $core_config_file = $this->getConfigValue('docroot') . '/' . $this->getConfigValue("cm.core.dirs.$cm_core_key.path") . '/core.extension.yml';
-    if (file_exists($core_config_file)) {
-      $task->drush("config-import")->arg($cm_core_key);
-    }
+    $task->drush("config-import")->arg($cm_core_key);
   }
 
   /**
@@ -107,11 +115,8 @@ class ConfigCommand extends BltTasks {
    * @param string $cm_core_key
    */
   protected function importConfigSplit($task, $cm_core_key) {
-    $core_config_file = $this->getConfigValue('docroot') . '/' . $this->getConfigValue("cm.core.dirs.$cm_core_key.path") . '/core.extension.yml';
-    if (file_exists($core_config_file)) {
-      $task->drush("pm-enable")->arg('config_split');
-      $task->drush("config-import")->arg('sync');
-    }
+    $task->drush("pm-enable")->arg('config_split');
+    $task->drush("config-import")->arg($cm_core_key);
   }
 
   /**
@@ -122,15 +127,15 @@ class ConfigCommand extends BltTasks {
    */
   protected function importFeatures($task, $cm_core_key) {
     $task->drush("config-import")->arg($cm_core_key)->option('partial');
-    if ($this->getConfig()->has('cm.features.bundle"')) {
-      $task->drush("pm-enable")->arg('features');
+    $task->drush("pm-enable")->arg('features');
+    $task->drush("cc")->arg('drush');
+    if ($this->getConfig()->has('cm.features.bundle')) {
       // Clear drush caches to register features drush commands.
-      $task->drush("cc")->arg('drush');
       foreach ($this->getConfigValue('cm.features.bundle') as $bundle) {
-        $task->drush("features-revert-all")->option('bundle', $bundle);
+        $task->drush("features-import-all")->option('bundle', $bundle);
         // Revert all features again!
         // @see https://www.drupal.org/node/2851532
-        $task->drush("features-revert-all")->option('bundle', $bundle);
+        $task->drush("features-import-all")->option('bundle', $bundle);
       }
     }
   }
@@ -144,6 +149,10 @@ class ConfigCommand extends BltTasks {
    */
   protected function checkFeaturesOverrides() {
     if ($this->getConfigValue('cm.features.no-overrides')) {
+      $this->logger->warning("Features configuration overrides will not be checked due to breaking changes in Drush 9.");
+      $this->logger->warning("This check will be re-enabled after fixes are made in the features module upstream.");
+      return 1;
+      // @codingStandardsIgnoreStart
       $this->say("Checking for features overrides...");
       if ($this->getConfig()->has('cm.features.bundle')) {
         $task = $this->taskDrush()->stopOnFail();
@@ -164,6 +173,25 @@ class ConfigCommand extends BltTasks {
           }
         }
       }
+    }
+    // @codingStandardsIgnoreEnd
+  }
+
+  /**
+   * Checks whether core config is overridden.
+   *
+   * @param string $cm_core_key
+   *
+   * @throws \Acquia\Blt\Robo\Exceptions\BltException
+   */
+  protected function checkConfigOverrides($cm_core_key) {
+    $this->say("Checking for config overrides...");
+    $task = $this->taskDrush()
+      ->drush("cex")
+      ->arg($cm_core_key);
+    $result = $task->run();
+    if (!$this->getConfigValue('cm.allow-overrides') && !$result->wasSuccessful()) {
+      throw new BltException("Configuration in the database does not match configuration on disk. BLT has attempted to automatically fix this by re-exporting configuration to disk. Please read https://github.com/acquia/blt/wiki/Configuration-overrides");
     }
   }
 

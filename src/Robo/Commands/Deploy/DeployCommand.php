@@ -3,6 +3,7 @@
 namespace Acquia\Blt\Robo\Commands\Deploy;
 
 use Acquia\Blt\Robo\BltTasks;
+use Acquia\Blt\Robo\Common\RandomString;
 use Acquia\Blt\Robo\Exceptions\BltException;
 use Robo\Contract\VerbosityThresholdInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -44,6 +45,9 @@ class DeployCommand extends BltTasks {
   ]) {
     if (!$this->getInspector()->isGitMinimumVersionSatisfied('2.0')) {
       $this->logger->error("Your system does not meet BLT's requirements. Please update git to 2.0 or newer.");
+    }
+    if ($options['dry-run']) {
+      $this->logger->warning("This will be a dry run, the artifact will not be pushed.");
     }
     $this->checkDirty($options);
 
@@ -151,8 +155,7 @@ class DeployCommand extends BltTasks {
       throw new BltException("You must enter a valid tag name.");
     }
     else {
-      $tag_name = $options['tag'];
-      $this->say("Tag is set to <comment>{$options['tag']}</comment>.");
+      $this->say("Tag is set to <comment>$tag_name</comment>.");
     }
 
     return $tag_name;
@@ -311,7 +314,7 @@ class DeployCommand extends BltTasks {
   public function build() {
     $this->say("Generating build artifact...");
     $this->say("For more detailed output, use the -v flag.");
-    $exit_code = $this->invokeCommands([
+    $this->invokeCommands([
       // Execute `blt frontend` to ensure that frontend artifact are generated
       // in source repo.
       'frontend',
@@ -319,9 +322,6 @@ class DeployCommand extends BltTasks {
       // slim chance this has never been generated.
       'setup:hash-salt',
     ]);
-    if ($exit_code) {
-      return $exit_code;
-    }
 
     $this->buildCopy();
     $this->composerInstall();
@@ -329,6 +329,9 @@ class DeployCommand extends BltTasks {
     $this->deploySamlConfig();
     if (!empty($this->tagName)) {
       $this->createDeployId($this->tagName);
+    }
+    else {
+      $this->createDeployId(RandomString::string(8));
     }
     $this->invokeHook("post-deploy-build");
     $this->say("<info>The deployment artifact was generated at {$this->deployDir}.</info>");
@@ -494,13 +497,16 @@ class DeployCommand extends BltTasks {
    */
   protected function commit() {
     $this->say("Committing artifact to <comment>{$this->branchName}</comment>...");
-    $this->taskExecStack()
+    $result = $this->taskExecStack()
       ->dir($this->deployDir)
       ->exec("git add -A")
       ->exec("git commit --quiet -m '{$this->commitMessage}'")
-      ->stopOnFail()
       ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
       ->run();
+
+    if (!$result->wasSuccessful()) {
+      throw new BltException("Failed to commit deployment artifact!");
+    }
   }
 
   /**
@@ -516,13 +522,16 @@ class DeployCommand extends BltTasks {
     }
 
     $task = $this->taskExecStack()
-      ->dir($this->deployDir)
-      ->stopOnFail();
+      ->dir($this->deployDir);
     foreach ($this->getConfigValue('git.remotes') as $remote) {
       $remote_name = md5($remote);
       $task->exec("git push $remote_name $identifier");
     }
-    $task->run();
+    $result = $task->run();
+
+    if (!$result->wasSuccessful()) {
+      throw new BltException("Failed to push deployment artifact!");
+    }
   }
 
   /**
@@ -543,13 +552,7 @@ class DeployCommand extends BltTasks {
    */
   protected function deploySamlConfig() {
     if ($this->getConfigValue('simplesamlphp')) {
-      $this->say("Generating simplesamlphp configuration...");
-      $this->taskExecStack()
-        ->exec("blt simplesamlphp:deploy:config")
-        ->dir($this->getConfigValue('repo.root'))
-        ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
-        ->stopOnFail()
-        ->run();
+      $this->invokeCommand('simplesamlphp:deploy:config');
     }
   }
 
@@ -559,26 +562,44 @@ class DeployCommand extends BltTasks {
    * @command deploy:update
    */
   public function updateSites() {
-    // Most sites store their version-controlled configuration in
-    // /config/default. ACE internally sets the vcs configuration
-    // directory to /config/default, so we use that.
-    // @see https://github.com/acquia/blt/issues/678
-    $this->config->set('cm.core.key', $this->getConfigValue('cm.core.deploy-key'));
     // Disable alias since we are targeting specific uri.
     $this->config->set('drush.alias', '');
 
     foreach ($this->getConfigValue('multisites') as $multisite) {
       $this->say("Deploying updates to $multisite...");
+      $this->config->set('drush.uri', $multisite);
+
+      $this->invokeCommand('setup:config-import');
+      $this->invokeCommand('setup:toggle-modules');
+
+      $this->say("Finished deploying updates to $multisite.");
+    }
+  }
+
+  /**
+   * Syncs database and files and runs updates.
+   *
+   * @command deploy:sync:refresh
+   */
+  public function syncRefresh() {
+    // Disable alias since we are targeting specific uri.
+    $this->config->set('drush.alias', '');
+
+    // Sync files.
+    $this->config->set('sync.files', TRUE);
+
+    foreach ($this->getConfigValue('multisites') as $multisite) {
+      $this->say("Syncing $multisite...");
       if (!$this->config->get('drush.uri')) {
         $this->config->set('drush.uri', $multisite);
       }
 
-      $status_code = $this->invokeCommand('setup:config-import');
-      $status_code = $this->invokeCommand('setup:toggle-modules');
+      $this->invokeCommand('sync:db');
+      $this->invokeCommand('sync:files');
+      $this->invokeCommand('setup:config-import');
+      $this->invokeCommand('setup:toggle-modules');
 
-      $this->say("Finished deploying updates to $multisite.");
-
-      return $status_code;
+      $this->say("Finished syncing $multisite.");
     }
   }
 
@@ -588,13 +609,10 @@ class DeployCommand extends BltTasks {
    * @command deploy:drupal:install
    */
   public function installDrupal() {
-    $status_code = $this->invokeCommands([
+    $this->invokeCommands([
       'internal:drupal:install',
       'deploy:update',
     ]);
-    if ($status_code) {
-      return $status_code;
-    }
 
     $this->updateSites();
   }

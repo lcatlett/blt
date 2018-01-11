@@ -10,6 +10,7 @@ use Acquia\Blt\Robo\Inspector\InspectorAwareInterface;
 use Acquia\Blt\Robo\Log\BltLogStyle;
 use Acquia\Blt\Robo\Wizards\SetupWizard;
 use Acquia\Blt\Robo\Wizards\TestsWizard;
+use Acquia\Blt\Update\Updater;
 use Consolidation\AnnotatedCommand\CommandFileDiscovery;
 use League\Container\ContainerAwareInterface;
 use League\Container\ContainerAwareTrait;
@@ -32,6 +33,11 @@ class Blt implements ContainerAwareInterface, LoggerAwareInterface {
   use ConfigAwareTrait;
   use ContainerAwareTrait;
   use LoggerAwareTrait;
+
+  /**
+   * The BLT version.
+   */
+  const VERSION = '9.1.x-dev';
 
   /**
    * The Robo task runner.
@@ -64,7 +70,7 @@ class Blt implements ContainerAwareInterface, LoggerAwareInterface {
   ) {
 
     $this->setConfig($config);
-    $application = new Application('BLT', $config->get('version'));
+    $application = new Application('BLT', Blt::VERSION);
     $container = Robo::createDefaultContainer($input, $output, $application,
       $config);
     $this->setContainer($container);
@@ -76,7 +82,6 @@ class Blt implements ContainerAwareInterface, LoggerAwareInterface {
     $this->runner->setContainer($container);
 
     $this->setLogger($container->get('logger'));
-    $this->validateEnvironment();
   }
 
   /**
@@ -154,7 +159,7 @@ class Blt implements ContainerAwareInterface, LoggerAwareInterface {
   /**
    * Add any global arguments or options that apply to all commands.
    *
-   * @param \Symfony\Component\Console\Application $app
+   * @param \Acquia\Blt\Robo\Application $app
    *   The Symfony application.
    */
   private function addDefaultArgumentsAndOptions(Application $app) {
@@ -196,6 +201,9 @@ class Blt implements ContainerAwareInterface, LoggerAwareInterface {
 
     $container->share('filesetManager', FilesetManager::class);
 
+    $updater = new Updater('Acquia\Blt\Update\Updates', $this->getConfig()->get('repo.root'));
+    $container->share('updater', $updater);
+
     /** @var \Consolidation\AnnotatedCommand\AnnotatedCommandFactory $factory */
     $factory = $container->get('commandFactory');
     // Tell the command loader to only allow command functions that have a
@@ -227,23 +235,6 @@ class Blt implements ContainerAwareInterface, LoggerAwareInterface {
     $status_code = $this->runner->run($input, $output, $application, $this->commands);
 
     return $status_code;
-  }
-
-  /**
-   * Validates that environment is BLT compatible.
-   */
-  protected function validateEnvironment() {
-    $this->warnIfXDebugLoaded();
-  }
-
-  /**
-   * Warns the user if the xDebug extension is loaded.
-   */
-  protected function warnIfXdebugLoaded() {
-    $xdebug_loaded = extension_loaded('xdebug');
-    if ($xdebug_loaded) {
-      $this->logger->warning("The xDebug extension is loaded. This will significantly decrease performance.");
-    }
   }
 
 }

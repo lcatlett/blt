@@ -115,7 +115,6 @@ class Filesets implements ConfigAwareInterface {
       ->notPath('behat')
       ->notPath('node_modules')
       ->notPath('vendor');
-
     return $finder;
   }
 
@@ -131,6 +130,7 @@ class Filesets implements ConfigAwareInterface {
       ->files()
       ->path("*/js/*")
       ->name("*.js")
+      ->notName('*.min.js')
       ->notPath('bower_components')
       ->notPath('node_modules')
       ->notPath('vendor');

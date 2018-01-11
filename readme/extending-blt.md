@@ -8,36 +8,26 @@ To create your own Robo PHP command:
 
 1. Create a new file in `blt/src/Commands` named using the pattern `*Command.php`. The file naming convention is required.
 1. You must use the namespace `Acquia\Blt\Custom\Commands` in your command file.
+1. Generate an example command file by executing `blt example:init`. You may use the generated file as a guide for writing your own command.
 1. Follow the [Robo PHP Getting Started guide](http://robo.li/getting-started/#commands) to write a custom command.
-
-For an example implementation, please see [ExampleCommand.php](../template/blt/src/Commands/ExampleCommand.php).
 
 ## Adding a custom Robo Hook
 
 BLT uses the [Annotated Command](https://github.com/consolidation/annotated-command) library to enable you to hook into BLT commands. This allows you to execute custom code
 in response to various events, typically just before or just after a BLT command is executed.
 
-To create a hook, create a new file in `blt/src/Hooks` named using the pattern `*Hook.php`.
+To create a hook:
 
-For an example implementation, please see [ExampleHook.php](../template/blt/src/Hooks/ExampleHook.php).
+1. Create a new file in `blt/src/Hooks` named using the pattern `*Hook.php`.
+1. Generate an example hook file by executing `blt example:init`. You may use the generated file as a guide for writing your own command.
 
 For a list of all available hook types, see [Annotated Command's hook types](https://github.com/consolidation/annotated-command#hooks).
 
 ## Replacing/Overriding a Robo Command
 
-@todo Document this!
+To replace a BLT command with your own custom version, implement the [replace command annotation](https://github.com/consolidation/annotated-command#replace-command-hook) for your custom command.
 
-## Overriding a variable value:
-
-You can override the value of any configuration variable used by BLT by either:
-
-1. Adding the variable to your project.yml file:
-
-        behat.tags: @mytags
-
-2. Specifying the variable value in your `blt` command using argument syntax `-D [key]=[value]`, e.g.,
-
-        blt tests:behat -D behat.tags='@mytags'
+Please note that when you do this, you take responsibility for maintaining your custom command. Your command may break when changes are made to the upstream version of the command in BLT itself.
 
 ## Disabling a command
 
@@ -46,16 +36,68 @@ You may disable any BLT command. This will cause the target to be skipped during
       disable-targets:
         validate:
           phpcs: true
+        git:
+          commit-msg: true
 
-This snippet would cause the `validate:phpcs` target to be skipped during BLT builds.
+This snippet would cause the `validate:phpcs` and `git:commit-msg` targets to be skipped during BLT builds.
 
 ## Adding / overriding filesets
 
-@todo Document this!
+To modify the behavior of PHPCS, see [validate:phpcs](#validatephpcs) documentation.
+
+To modify the filesets that are used in other commands, such as `validate:twig`, `validate:yaml`, and `validate:lint`:
+
+1. Generate an example `Filesets.php` file by executing `blt example:init`. You may use the generated file as a guide for writing your own filesite.
+1. Create a public method in the `Filesets` class in the generated file.
+1. Add a Fileset annotation to your public method, specifying its id:
+
+        @fileset(id="files.yaml.custom")
+
+1. Instantiate and return a `Symfony\Component\Finder\Finder` object. The files found by the finder comprise the fileset.
+1. You may use the Fileset id in various configuration values in your `blt/project.yml` file. E.g., modify `validate:yaml` such that it scans only your custom fileset, you would add the following to `blt/project.yml`:
+
+        validate:
+          yaml:
+            filesets:
+              - files.yaml.custom
 
 ## Modifying BLT Configuration
 
 BLT configuration can be customized by overriding the value of default variable values. You can find the default value of any BLT variable in [build.yml](https://github.com/acquia/blt/blob/8.x/config/build.yml).
+
+### Overriding a variable value:
+
+Configuration values are loaded, in this order, from the following list of YAML files:
+
+-  blt/project.yml
+-  blt/[environment].yml
+-  blt/project.local.yml
+
+Values loaded from the later files will overwrite values in earlier files. Note, if you would like to override a non-empty value with an empty value, the override value must be set to `null` and not `''` or `[]`.
+
+### Overriding project-wide
+
+You can override any variable value by adding an entry for that variable to your `project.yml` file. This change will be committed to your repository and shared by all developers for the project. For example:
+
+        behat.tags: @mytags
+
+### Overriding locally
+
+You can override a variable value for your local machine by adding an entry for that variable to your `project.local.yml file`.  This change will not be committed to your repository.
+
+### Overriding in specific environments
+
+You may override a variable value for specific environments, such as a the `ci` environment, by adding an entry for that variable to a file named in the pattern [environment].yml. For instance, ci.yml.
+
+At present, only the CI environment is automatically detected.
+
+### Overriding at runtime
+
+You may overwrite a variable value at runtime by specifying the variable value in your `blt` command using argument syntax `-D [key]=[value]`, e.g.,
+
+        blt tests:behat -D behat.tags='@mytags'
+
+For configuration values that are indexed arrays, you can override individual values using the numeric index, such as `git.remotes.0`.
 
 Listed below are some of the more commonly customized BLT targets.
 
@@ -118,6 +160,12 @@ You may use a custom git hook in place of BLT's default git hooks by setting its
 
 In this example, an executable file named `pre-commit` should exist in `${repo.root}/my-custom-git-hooks`.
 
+You should execute `blt setup:git-hooks` after modifying these values in order for changes to take effect.
+
+#### git:commit-msg
+
+By default, BLT will execute the `git:commit-msg` command when new git commits are made. This command validates that the commit message matches the regular expression defined in `git.commit-msg.pattern`. You may [override the default configuration](#modifying-blt-configuration).
+
 ### tests:*
 
 #### tests:behat
@@ -126,19 +174,11 @@ To modify the behavior of the tests:behat target, you may override BLT's `behat`
 
         behat:
           config: ${repo.root}/tests/behat/local.yml
-          haltonerror: true
-          strict: true
           profile: local
-          # If true, `drush runserver` will be used for executing tests.
-          run-server: false
           # The URL of selenium server. Must correspond with setting in behat's yaml config.
           selenium:
             port: 4444
             url: http://127.0.0.1:${behat.selenium.port}/wd/hub
-          # This is used for ad-hoc creation of a server via `drush runserver`.
-          server:
-            port: 8888
-            url: http://127.0.0.1:${tests.server.port}
           # An array of paths with behat tests that should be executed.
           paths:
             # - ${docroot}/modules
@@ -153,12 +193,17 @@ To modify the behavior of the tests:behat target, you may override BLT's `behat`
 
 #### validate:phpcs
 
-To modify the behavior of the validate:phpcs target, you may override BLT's `phpcs` configuration:
+To modify the behavior of the validate:phpcs target, you may copy `phpcs.xml.dist` to `phpcs.xml` in your repository root directory and modify the XML. Please see the [official PHPCS documentation](https://github.com/squizlabs/PHP_CodeSniffer/wiki/Advanced-Usage#using-a-default-configuration-file) for more information.
 
-        phpcs:
-          filesets:
-            - files.php.custom.modules
-            - files.php.tests
-            - files.frontend.custom.themes
+#### validate:twig
 
-The phpcs.filesets array contains references BLT filesets. You can remove or add your own custom filesets to the phpcs.filesets array.
+To prevent validation failures on any Twig filters or functions created in custom or contrib module `twig.extension` services, add `filters` and `functions` like so:
+
+        validate:
+          twig:
+            filters:
+              - my_filter_1
+              - my_filter_2
+            functions:
+              - my_function_1
+              - my_function_2

@@ -82,7 +82,15 @@ class Executor implements ConfigAwareInterface, IOAwareInterface, LoggerAwareInt
     if (!empty($drush_alias)) {
       $drush_alias = "@$drush_alias";
     }
-    $process_executor = Robo::process(new Process("'$bin/drush' $drush_alias $command"));
+
+    $command_string = "'$bin/drush' $drush_alias $command";
+
+    if ($this->input()->hasOption('yes') && $this->input()->getOption('yes')) {
+      $command_string .= ' -y';
+    }
+
+    $process_executor = Robo::process(new Process($command_string));
+
     return $process_executor->dir($this->getConfigValue('docroot'))
       ->interactive(FALSE)
       ->printOutput(TRUE)
@@ -137,7 +145,7 @@ class Executor implements ConfigAwareInterface, IOAwareInterface, LoggerAwareInt
   }
 
   /**
-   * Waits until a given URL responds with a 200.
+   * Waits until a given URL responds with a non-50x response.
    *
    * This does have a maximum timeout, defined in wait().
    *
@@ -166,7 +174,7 @@ class Executor implements ConfigAwareInterface, IOAwareInterface, LoggerAwareInt
    * @throws \Exception
    */
   public function wait(callable $callable, array $args, $message = '') {
-    $maxWait = 15 * 1000;
+    $maxWait = 60 * 1000;
     $checkEvery = 1 * 1000;
     $start = microtime(TRUE) * 1000;
     $end = $start + $maxWait;
@@ -185,7 +193,7 @@ class Executor implements ConfigAwareInterface, IOAwareInterface, LoggerAwareInt
         }
       }
       catch (\Exception $e) {
-        $this->logger->debug($e->getMessage());
+        $this->logger->error($e->getMessage());
       }
       usleep($checkEvery * 1000);
     }
@@ -194,13 +202,13 @@ class Executor implements ConfigAwareInterface, IOAwareInterface, LoggerAwareInt
   }
 
   /**
-   * Checks a URL for a 200 response.
+   * Checks a URL for a non-50x response.
    *
    * @param string $url
    *   The URL to check.
    *
    * @return bool
-   *   TRUE if URL responded with a 200.
+   *   TRUE if URL responded with a non-50x response.
    */
   public function checkUrl($url) {
     try {
@@ -210,7 +218,12 @@ class Executor implements ConfigAwareInterface, IOAwareInterface, LoggerAwareInt
         'timeout' => 2,
         'exceptions' => FALSE,
       ]);
-      return $res->getStatusCode() == 200;
+      if ($res->getStatusCode() && substr($res->getStatusCode(), 0, 1) != '5') {
+        return TRUE;
+      }
+      else {
+        return FALSE;
+      }
     }
     catch (\Exception $e) {
 

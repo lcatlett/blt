@@ -12,27 +12,33 @@
         "docs": "http://blt.readthedocs.io/en/stable"
     },
     "type": "composer-plugin",
-    "license": "GPL-2.0",
+    "license": "GPL-2.0-only",
     "require": {
-        "asm89/twig-lint":                  "^1.0.2",
-        "composer/installers":              "^1.2.0",
-        "composer-plugin-api":              "^1.0.0",
-        "doctrine/common":                  "^2.5",
-        "oomphinc/composer-installers-extender": "^1.1",
-        "dflydev/dot-access-data":          "^1.1.0",
-        "drupal/coder":                     "^8.2.8",
-        "drush/drush":                      "^8.1.10",
+        "php": ">=5.6",
+        "composer-plugin-api": "^1.0.0",
+        "composer/installers": "^1.2.0",
+        "composer/semver": "^1.4",
+        "consolidation/config": "^1.0.0",
+        "consolidation/robo": "^1.1.4",
+        "cweagans/composer-patches": "^1.6.4",
+        "dealerdirect/phpcodesniffer-composer-installer": "^0.4.0",
+        "dflydev/dot-access-data": "^1.1.0",
+        "doctrine/common": "^2.5",
+        "doctrine/inflector": "~1.1.0",
+        "drupal/coder": "^8.2.11",
+        "drush/drush": "9.0.x-dev",
         "grasmash/drupal-security-warning": "^1.0.0",
-        "grasmash/yaml-cli":                "^1.0.0",
-        "grasmash/yaml-expander":           "^1.0.5",
-        "php":                              ">=5.6",
-        "phpunit/phpunit":                  "^4.8",
-        "squizlabs/php_codesniffer":        "^2.7",
-        "symfony/yaml":                     "^2.8.11",
-        "symfony/console":                  "^2.8.11",
-        "wikimedia/composer-merge-plugin":  "dev-master",
-        "consolidation/Robo":               "^1.0.7",
-        "tivie/php-os-detector": "^1.0"
+        "grasmash/yaml-cli": "^1.0.0",
+        "grasmash/yaml-expander": "^1.2.0",
+        "oomphinc/composer-installers-extender": "^1.1",
+        "phpunit/phpunit": "^4.8",
+        "squizlabs/php_codesniffer": "^2.7",
+        "symfony/console": "~3.2.8",
+        "symfony/twig-bridge": "^3.3",
+        "symfony/yaml": "~3.2.8",
+        "tivie/php-os-detector": "^1.0",
+        "typhonius/acquia-php-sdk-v2": "^1.0.0",
+        "wikimedia/composer-merge-plugin": "^1.4.1"
     },
     "autoload": {
         "psr-4": {
@@ -42,7 +48,8 @@
         }
     },
     "extra": {
-        "class": "Acquia\\Blt\\Composer\\Plugin"
+        "class": "Acquia\\Blt\\Composer\\Plugin",
+        "composer-exit-on-patch-failure": true
     },
     "bin": [
         "bin/blt"
@@ -50,13 +57,19 @@
     "conflict": {
         "drupal/core": "7.*"
     },
+    "config": {
+        "sort-packages": true,
+        "php": "5.6"
+    },
     "suggest": {
-        "hirak/prestissimo": "^0.3"
+        "hirak/prestissimo": "^0.3",
+        "typhonius/acquia_cli": "^0.0.7",
+        "davereid/drush-acquia-hook-invoke": "dev-master"
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
     "require-dev": {
-        "guzzlehttp/guzzle": "^6.2",
-        "composer/composer": "dev-master"
+        "knplabs/github-api": "^2.6",
+        "php-http/guzzle6-adapter": "^1.1"
     }
 }

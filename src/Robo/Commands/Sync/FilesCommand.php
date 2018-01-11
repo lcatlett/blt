@@ -13,6 +13,8 @@ class FilesCommand extends BltTasks {
    * Copies remote files to local machine.
    *
    * @command sync:files
+   *
+   * @validateDrushConfig
    */
   public function syncFiles() {
     $local_alias = '@' . $this->getConfigValue('drush.aliases.local');
@@ -21,12 +23,11 @@ class FilesCommand extends BltTasks {
 
     $task = $this->taskDrush()
       ->alias('')
-      ->assume('')
       ->uri('')
       ->drush('rsync')
-      ->arg($remote_alias . ':%files')
+      ->arg($remote_alias . ':%files/')
       ->arg($this->getConfigValue('docroot') . "/sites/$site_dir/files")
-      ->option('exclude-paths', 'styles:css:js');
+      ->option('exclude-paths', implode(':', $this->getConfigValue('sync.exclude-paths')));
 
     $result = $task->run();
 

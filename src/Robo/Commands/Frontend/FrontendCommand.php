@@ -13,22 +13,19 @@ class FrontendCommand extends BltTasks {
    * Runs all frontend targets.
    *
    * @command frontend
-   *
    * @executeInDrupalVm
    */
   public function frontend() {
-    $status_code = $this->invokeCommands([
+    $this->invokeCommands([
       'frontend:setup',
       'frontend:build',
     ]);
-    return $status_code;
   }
 
   /**
    * Executes frontend-build target hook.
    *
    * @command frontend:build
-   *
    * @executeInDrupalVm
    */
   public function build() {
@@ -39,7 +36,6 @@ class FrontendCommand extends BltTasks {
    * Executes frontend-setup target hook.
    *
    * @command frontend:setup
-   *
    * @executeInDrupalVm
    */
   public function setup() {

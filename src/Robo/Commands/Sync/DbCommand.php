@@ -14,15 +14,33 @@ class DbCommand extends BltTasks {
    * Iteratively copies remote db to local db for each multisite.
    *
    * @command sync:db:all
+   *
+   * @executeInDrupalVm
    */
   public function syncDbAll() {
     $exit_code = 0;
     $multisites = $this->getConfigValue('multisites');
+
+    $this->say("A sql-sync will be performed for the following drush aliases:");
+    $sync_map = [];
     foreach ($multisites as $multisite) {
-      $this->say("Syncing db for site <comment>$multisite</comment>...");
-      $result = $this->syncDbMultisite($multisite);
+      $this->switchSiteContext($multisite);
+      $sync_map[$multisite]['local'] = '@' . $this->getConfigValue('drush.aliases.local');
+      $sync_map[$multisite]['remote'] = '@' . $this->getConfigValue('drush.aliases.remote');
+
+      $this->say($sync_map[$multisite]['remote'] . " => " . $sync_map[$multisite]['local']);
+    }
+    $this->say("To modify the set of aliases for syncing, set the values for drush.aliases.local and drush.aliases.remote in docroot/sites/[site]/blt.site.yml");
+    $continue = $this->confirm("Continue?");
+    if (!$continue) {
+      return $exit_code;
+    }
+
+    foreach ($multisites as $multisite) {
+      $this->switchSiteContext($multisite);
+      $result = $this->syncDbDefault();
       if (!$result->wasSuccessful()) {
-        $this->logger->error("Could not sync database for site '$multisite'.");
+        $this->logger->error("Could not sync database for site <comment>$multisite</comment>.");
         throw new BltException("Could not sync database.");
       }
     }
@@ -31,35 +49,19 @@ class DbCommand extends BltTasks {
   }
 
   /**
-   * Calls sync:db for a specific multisite.
-   *
-   * @param string $multisite_name
-   *   The name of a multisite. E.g., if docroot/sites/example.com is the site,
-   *   $multisite_name would be example.com.
-   *
-   * @return \Robo\Result
-   */
-  protected function syncDbMultisite($multisite_name) {
-    $this->getConfig()->setSiteConfig($multisite_name);
-    $result = $this->syncDbDefault();
-
-    return $result;
-  }
-
-  /**
    * Copies remote db to local db for default site.
    *
    * @command sync:db
+   *
+   * @validateDrushConfig
+   * @executeInDrupalVm
    */
   public function syncDbDefault() {
-    $this->invokeCommand('setup:settings');
-
     $local_alias = '@' . $this->getConfigValue('drush.aliases.local');
     $remote_alias = '@' . $this->getConfigValue('drush.aliases.remote');
 
     $task = $this->taskDrush()
       ->alias('')
-      ->assume('')
       ->drush('cache-clear drush')
       ->drush('sql-drop')
       ->drush('sql-sync')
@@ -69,11 +71,10 @@ class DbCommand extends BltTasks {
       ->option('create-db');
 
     if ($this->getConfigValue('drush.sanitize')) {
-      $task->option('sanitize');
+      $task->drush('sql-sanitize');
     }
 
     $task->drush('cache-clear drush');
-    $task->drush("$local_alias cache-rebuild");
 
     $result = $task->run();
 

@@ -31,8 +31,8 @@ class UpdateCommand extends BltTasks {
    * @hook init
    */
   public function initialize() {
-    $this->updater = new Updater('Acquia\Blt\Update\Updates', $this->getConfigValue('repo.root'));
-    $this->currentSchemaVersion = $this->getCurrentSchemaVersion();
+    $this->updater = $this->getContainer()->get('updater');
+    $this->currentSchemaVersion = $this->getInspector()->getCurrentSchemaVersion();
   }
 
   /**
@@ -41,19 +41,47 @@ class UpdateCommand extends BltTasks {
    * Called during `composer create-project acquia/blt-project`.
    *
    * @command internal:create-project
+   *
+   * @hidden
    */
   public function createProject() {
     $this->cleanUpProjectTemplate();
-    $this->updateRootProjectFiles();
-    $this->reInstallComposerPackages();
+    $this->initializeBlt();
     $this->setProjectName();
     $this->initAndCommitRepo();
-    $exit_code = $this->invokeCommand('install-alias');
     $this->displayArt();
-
     $this->yell("Your new BLT-based project has been created in {$this->getConfigValue('repo.root')}.");
     $this->say("Please continue by following the \"Creating a new project with BLT\" instructions:");
     $this->say("<comment>http://blt.readthedocs.io/en/8.x/readme/creating-new-project/</comment>");
+  }
+
+  /**
+   * (internal) Prepares a repo that is adding BLT for the first time.
+   *
+   * @command internal:add-to-project
+   *
+   * @return \Robo\Result
+   *
+   * @hidden
+   */
+  public function addToProject() {
+    $this->initializeBlt();
+    $this->displayArt();
+    $this->yell("BLT has been added to your project.");
+    $this->say("This required a full `composer update`.");
+    $this->say("BLT has added and modified various project files.");
+    $this->say("Please inspect your repository.");
+  }
+
+  /**
+   * Creates initial BLT files in their default state.
+   */
+  protected function initializeBlt() {
+    $this->updateRootProjectFiles();
+    $this->reInstallComposerPackages();
+    $this->invokeCommand('setup:settings');
+    $this->invokeCommand('examples:init');
+    $this->invokeCommand('install-alias');
   }
 
   /**
@@ -68,23 +96,7 @@ class UpdateCommand extends BltTasks {
       $this->updateSchemaVersionFile();
     }
     $this->cleanup();
-    $exit_code = $this->invokeCommand('install-alias');
-
-    return $exit_code;
-  }
-
-  /**
-   * (internal) Prepares a repo that is adding BLT for the first time.
-   *
-   * @command internal:add-to-project
-   *
-   * @return \Robo\Result
-   */
-  public function addToProject() {
-    $this->reInstallComposerPackages();
-    $this->displayArt();
-    $this->yell("BLT has been added to your project.");
-    $this->say("It has added and modified various project files. Please inspect your repository.");
+    $this->invokeCommand('install-alias');
   }
 
   /**
@@ -140,10 +152,12 @@ class UpdateCommand extends BltTasks {
    * (internal) Initializes the project repo and performs initial commit.
    *
    * @command internal:create-project:init-repo
+   *
+   * @hidden
    */
   public function initAndCommitRepo() {
     $result = $this->taskExecStack()
-      ->dir("repo.root")
+      ->dir($this->getConfigValue("repo.root"))
       ->exec("git init")
       ->exec('git add -A')
       ->exec("git commit -m 'Initial commit.'")
@@ -203,8 +217,7 @@ class UpdateCommand extends BltTasks {
 
     $result = $this->taskExecStack()
       ->dir($this->getConfigValue('repo.root'))
-      ->exec("composer install --no-interaction --prefer-dist --ansi")
-      ->detectInteractive()
+      ->exec("composer install --no-interaction --ansi")
       ->run();
 
     if (!$result->wasSuccessful()) {
@@ -225,23 +238,6 @@ class UpdateCommand extends BltTasks {
   }
 
   /**
-   * Gets the current schema version of the root project.
-   *
-   * @return string
-   *   The current schema version.
-   */
-  protected function getCurrentSchemaVersion() {
-    if (file_exists($this->getConfigValue('blt.config-files.schema-version'))) {
-      $version = file_get_contents($this->getConfigValue('blt.config-files.schema-version'));
-    }
-    else {
-      $version = $this->updater->getLatestUpdateMethodVersion();
-    }
-
-    return $version;
-  }
-
-  /**
    * Updates blt/.schema_version with latest schema version.
    */
   protected function updateSchemaVersionFile() {
@@ -257,6 +253,9 @@ class UpdateCommand extends BltTasks {
    * Executes all update hooks for a given schema delta.
    *
    * @param $starting_version
+   *
+   * @return bool
+   *   TRUE if updates were successfully executed.
    */
   protected function executeSchemaUpdates($starting_version) {
     $starting_version = $this->convertLegacySchemaVersion($starting_version);
@@ -265,6 +264,7 @@ class UpdateCommand extends BltTasks {
     if ($updates) {
       $this->say("<comment>The following BLT updates are outstanding:</comment>");
       $updater->printUpdates($updates);
+      // @todo Do not prompt if this is being run from Plugin.php.
       $confirm = $this->confirm('Would you like to perform the listed updates?');
       if ($confirm) {
         try {
@@ -352,9 +352,12 @@ class UpdateCommand extends BltTasks {
     // Values in the project's existing project.yml file will be preserved and
     // not overridden.
     $repo_project_yml = $this->getConfigValue('blt.config-files.project');
-    $munged_yaml = YamlMunge::munge($this->getConfigValue('blt.root') . '/template/blt/project.yml', $repo_project_yml);
-    $bytes = file_put_contents($this->getConfigValue('blt.config-files.project'), $munged_yaml);
-    if (!$bytes) {
+    $template_project_yml = $this->getConfigValue('blt.root') . '/template/blt/project.yml';
+    $munged_yml = YamlMunge::munge($template_project_yml, $repo_project_yml);
+    try {
+      YamlMunge::writeFile($repo_project_yml, $munged_yml);
+    }
+    catch (\Exception $e) {
       throw new BltException("Could not update $repo_project_yml.");
     }
   }
@@ -366,13 +369,10 @@ class UpdateCommand extends BltTasks {
    */
   protected function setProjectName() {
     $project_name = basename($this->getConfigValue('repo.root'));
-    $result = $this->taskExecStack()
-      ->exec("{$this->getConfigValue('composer.bin')}/yaml-cli update:value {$this->getConfigValue('blt.config-files.project')} project.machine_name '$project_name'")
-      ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
-      ->run();
-    if (!$result->wasSuccessful()) {
-      throw new BltException("Could not set value for project.machine_name in {$this->getConfigValue('blt.config-files.project')}.");
-    }
+    $project_yml = $this->getConfigValue('blt.config-files.project');
+    $project_config = YamlMunge::parseFile($project_yml);
+    $project_config['project']['machine_name'] = $project_name;
+    YamlMunge::writeFile($project_yml, $project_config);
   }
 
 }

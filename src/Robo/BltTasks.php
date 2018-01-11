@@ -5,6 +5,7 @@ namespace Acquia\Blt\Robo;
 use Acquia\Blt\Robo\Common\ArrayManipulator;
 use Acquia\Blt\Robo\Common\IO;
 use Acquia\Blt\Robo\Config\ConfigAwareTrait;
+use Acquia\Blt\Robo\Config\ConfigInitializer;
 use Acquia\Blt\Robo\Exceptions\BltException;
 use Acquia\Blt\Robo\Inspector\InspectorAwareInterface;
 use Acquia\Blt\Robo\Inspector\InspectorAwareTrait;
@@ -18,9 +19,8 @@ use Robo\Contract\ConfigAwareInterface;
 use Robo\Contract\IOAwareInterface;
 use Robo\Contract\VerbosityThresholdInterface;
 use Robo\LoadAllTasks;
-use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Input\ArrayInput;
-use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Yaml\Yaml;
 
 /**
  * Base class for BLT Robo commands.
@@ -50,12 +50,8 @@ class BltTasks implements ConfigAwareInterface, InspectorAwareInterface, LoggerA
    *
    * @param array $commands
    *   An array of Symfony commands to invoke. E.g., 'tests:behat'.
-   *
-   * @return int
-   *   The exit code of the command.
    */
   protected function invokeCommands(array $commands) {
-    $returnCode = 0;
     foreach ($commands as $key => $value) {
       if (is_numeric($key)) {
         $command = $value;
@@ -65,13 +61,8 @@ class BltTasks implements ConfigAwareInterface, InspectorAwareInterface, LoggerA
         $command = $key;
         $args = $value;
       }
-      $returnCode = $this->invokeCommand($command, $args);
-      // Return if this is non-zero exit code.
-      if ($returnCode) {
-        return $returnCode;
-      }
+      $this->invokeCommand($command, $args);
     }
-    return $returnCode;
   }
 
   /**
@@ -82,28 +73,29 @@ class BltTasks implements ConfigAwareInterface, InspectorAwareInterface, LoggerA
    * @param array $args
    *   An array of arguments to pass to the command.
    *
-   * @return int
-   *   The exit code of the command.
+   * @throws \Acquia\Blt\Robo\Exceptions\BltException
    */
   protected function invokeCommand($command_name, array $args = []) {
     $this->invokeDepth++;
 
-    // Skip invocation of disabled commands.
-    if ($this->isCommandDisabled($command_name)) {
-      return 0;
+    if (!$this->isCommandDisabled($command_name)) {
+      /** @var \Acquia\Blt\Robo\Application $application */
+      $application = $this->getContainer()->get('application');
+      $command = $application->find($command_name);
+
+      $input = new ArrayInput($args);
+      $prefix = str_repeat(">", $this->invokeDepth);
+      $this->output->writeln("<comment>$prefix $command_name</comment>");
+      $exit_code = $application->runCommand($command, $input, $this->output());
+      $this->invokeDepth--;
+
+      // The application will catch any exceptions thrown in the executed
+      // command. We must check the exit code and throw our own exception. This
+      // obviates the need to check the exit code of every invoked command.
+      if ($exit_code) {
+        throw new BltException("Command `$command_name {$input->__toString()}` exited with code $exit_code.");
+      }
     }
-
-    /** @var \Acquia\Blt\Robo\Application $application */
-    $application = $this->getContainer()->get('application');
-    $command = $application->find($command_name);
-
-    $input = new ArrayInput($args);
-    $prefix = str_repeat(">", $this->invokeDepth);
-    $this->output->writeln("<comment>$prefix $command_name</comment>");
-    $return_code = $application->runCommand($command, $input, $this->output());
-    $this->invokeDepth--;
-
-    return $return_code;
   }
 
   /**
@@ -133,7 +125,7 @@ class BltTasks implements ConfigAwareInterface, InspectorAwareInterface, LoggerA
   protected function isCommandDisabled($command) {
     $disabled_commands = $this->getDisabledCommands();
     if (is_array($disabled_commands) && array_key_exists($command, $disabled_commands) && $disabled_commands[$command]) {
-      $this->output()->writeln("The $command command is disabled.");
+      $this->logger->warning("The $command command is disabled.");
       return TRUE;
     }
 
@@ -159,7 +151,7 @@ class BltTasks implements ConfigAwareInterface, InspectorAwareInterface, LoggerA
         ->dir($this->getConfigValue("target-hooks.$hook.dir"))
         ->detectInteractive()
         ->printOutput(TRUE)
-        ->printMetadata(FALSE)
+        ->printMetadata(TRUE)
         ->stopOnFail()
         ->run();
 
@@ -198,9 +190,9 @@ class BltTasks implements ConfigAwareInterface, InspectorAwareInterface, LoggerA
    */
   protected function executeCommandInDrupalVm($command) {
     $this->say("Executing command <comment>$command</comment> inside of Drupal VM...");
-    $this->installVagrantPlugin('vagrant-exec');
+    $vm_config = Yaml::parse(file_get_contents($this->getConfigValue('vm.config')));
     $result = $this->taskExecStack()
-      ->exec("vagrant exec --tty '$command'")
+      ->exec("vagrant ssh --command 'cd {$vm_config['ssh_home']}; $command'")
       ->dir($this->getConfigValue('repo.root'))
       ->detectInteractive()
       ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
@@ -224,18 +216,28 @@ class BltTasks implements ConfigAwareInterface, InspectorAwareInterface, LoggerA
    * @throws \Acquia\Blt\Robo\Exceptions\BltException
    */
   protected function executeCommandAgainstFilesets(array $filesets, $command, $parallel = FALSE) {
+    $passed = TRUE;
+    $failed_filesets = [];
     foreach ($filesets as $fileset_id => $fileset) {
       if (!is_null($fileset) && iterator_count($fileset)) {
         $this->say("Iterating over fileset $fileset_id...");
         $files = iterator_to_array($fileset);
         $result = $this->executeCommandAgainstFiles($files, $command, $parallel);
         if (!$result->wasSuccessful()) {
-          throw new BltException("Executing `$command` against $fileset_id returned a non-zero exit code.`");
+          // We iterate over all filesets before throwing an exception. This
+          // will, for instance, allow a user to see all PHPCS violations in
+          // output before the command exits.
+          $passed = FALSE;
+          $failed_filesets[] = $fileset_id;
         }
       }
       else {
         $this->logger->info("No files were found in fileset $fileset_id. Skipped.");
       }
+    }
+
+    if (!$passed) {
+      throw new BltException("Executing `$command` against fileset(s) " . implode(', ', $failed_filesets) . " returned a non-zero exit code.`");
     }
   }
 
@@ -257,23 +259,55 @@ class BltTasks implements ConfigAwareInterface, InspectorAwareInterface, LoggerA
    */
   protected function executeCommandAgainstFiles($files, $command, $parallel = FALSE) {
     if ($parallel) {
-      $task = $this->taskParallelExec()
-        ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERY_VERBOSE);
+      return $this->executeCommandAgainstFilesInParallel($files, $command);
+    }
+    else {
+      return $this->executeCommandAgainstFilesProcedurally($files, $command);
+    }
+  }
 
-      foreach ($files as $file) {
+  /**
+   * @param $files
+   * @param $command
+   *
+   * @return \Robo\Result
+   */
+  protected function executeCommandAgainstFilesInParallel($files, $command) {
+    $task = $this->taskParallelExec()
+      ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERY_VERBOSE);
+
+    $chunk_size = 20;
+    $chunks = array_chunk((array) $files, $chunk_size);
+    foreach ($chunks as $chunk) {
+      foreach ($chunk as $file) {
         $full_command = sprintf($command, $file);
         $task->process($full_command);
       }
-    }
-    else {
-      $task = $this->taskExecStack()
-        ->printMetadata(FALSE)
-        ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERY_VERBOSE);
 
-      foreach ($files as $file) {
-        $full_command = sprintf($command, $file);
-        $task->exec($full_command);
+      $result = $task->run();
+
+      if (!$result->wasSuccessful()) {
+        $this->say($result->getMessage());
+        return $result;
       }
+    }
+    return $result;
+  }
+
+  /**
+   * @param $files
+   * @param $command
+   *
+   * @return null|\Robo\Result
+   */
+  protected function executeCommandAgainstFilesProcedurally($files, $command) {
+    $task = $this->taskExecStack()
+      ->printMetadata(FALSE)
+      ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERY_VERBOSE);
+
+    foreach ($files as $file) {
+      $full_command = sprintf($command, $file);
+      $task->exec($full_command);
     }
 
     $result = $task->run();
@@ -286,44 +320,20 @@ class BltTasks implements ConfigAwareInterface, InspectorAwareInterface, LoggerA
   }
 
   /**
-   * Writes a particular configuration key's value to the log.
+   * Sets multisite context by settings site-specific config values.
    *
-   * @param array $array
-   *   The configuration.
-   * @param string $prefix
-   *   A prefix to add to each row in the configuration.
-   * @param int $verbosity
-   *   The verbosity level at which to display the logged message.
+   * @param string $site_name
+   *   The name of a multisite. E.g., if docroot/sites/example.com is the site,
+   *   $site_name would be example.com.
    */
-  protected function logConfig(array $array, $prefix = '', $verbosity = OutputInterface::VERBOSITY_VERY_VERBOSE) {
-    if ($this->output()->getVerbosity() >= $verbosity) {
-      if ($prefix) {
-        $this->output()->writeln("<comment>Configuration for $prefix:</comment>");
-        foreach ($array as $key => $value) {
-          $array["$prefix.$key"] = $value;
-          unset($array[$key]);
-        }
-      }
-      $this->printArrayAsTable($array);
-    }
-  }
+  public function switchSiteContext($site_name) {
+    $this->logger->debug("Switching site context to <comment>$site_name</comment>.");
+    $config_initializer = new ConfigInitializer($this->getConfigValue('repo.root'), $this->input());
+    $config_initializer->setSite($site_name);
+    $new_config = $config_initializer->initialize();
 
-  /**
-   * Writes an array to the screen as a formatted table.
-   *
-   * @param array $array
-   *   The unformatted array.
-   * @param array $headers
-   *   The headers for the array. Defaults to ['Property','Value'].
-   */
-  protected function printArrayAsTable(
-    array $array,
-    array $headers = ['Property', 'Value']
-  ) {
-    $table = new Table($this->output);
-    $table->setHeaders($headers)
-      ->setRows(ArrayManipulator::convertArrayToFlatTextArray($array))
-      ->render();
+    // Replaces config.
+    $this->getConfig()->import($new_config->export());
   }
 
 }

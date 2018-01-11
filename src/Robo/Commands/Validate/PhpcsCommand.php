@@ -3,22 +3,12 @@
 namespace Acquia\Blt\Robo\Commands\Validate;
 
 use Acquia\Blt\Robo\BltTasks;
+use Acquia\Blt\Robo\Exceptions\BltException;
 
 /**
  * Defines commands in the "validate:phpcs*" namespace.
  */
 class PhpcsCommand extends BltTasks {
-
-  protected $standard;
-
-  /**
-   * This hook will fire for all commands in this command file.
-   *
-   * @hook init
-   */
-  public function initialize() {
-    $this->standard = $this->getConfigValue('repo.root') . '/vendor/drupal/coder/coder_sniffer/Drupal/ruleset.xml';
-  }
 
   /**
    * Executes PHP Code Sniffer against all phpcs.filesets files.
@@ -28,15 +18,33 @@ class PhpcsCommand extends BltTasks {
    * @command validate:phpcs
    */
   public function sniffFileSets() {
-    $fileset_ids = $this->getConfigValue('phpcs.filesets');
-    $filesets = $this->getContainer()->get('filesetManager')->getFilesets($fileset_ids);
     $bin = $this->getConfigValue('composer.bin');
-    $command = "'$bin/phpcs' --standard='{$this->standard}' '%s'";
+    $result = $this->taskExecStack()
+      ->dir($this->getConfigValue('repo.root'))
+      ->exec("$bin/phpcs")
+      ->run();
+    $exit_code = $result->getExitCode();
+    if ($exit_code) {
+      if ($this->input()->isInteractive()) {
+        $this->fixViolationsInteractively();
+        throw new BltException("Initial execution of PHPCS failed. Re-run now that PHPCBF has fixed some violations.");
+      }
+      else {
+        $this->logger->notice('Try running `blt fix:phpcbf` to automatically fix standards violations.');
+        throw new BltException("PHPCS failed.");
+      }
+    }
+  }
 
-    // @todo Compare the performance of this vs. dumping $files to a temp file
-    // and executing phpcs --file-set=[tmp-file]. Also, compare vs. using
-    // parallel processes.
-    $this->executeCommandAgainstFilesets($filesets, $command);
+  /**
+   * Prompts user to fix PHPCS violations.
+   */
+  protected function fixViolationsInteractively() {
+    $continue = $this->confirm("Attempt to fix violations automatically via PHPCBF?");
+    if ($continue) {
+      $this->invokeCommand('fix:phpcbf');
+      $this->logger->warning("You must stage any new changes to files before committing.");
+    }
   }
 
   /**
@@ -53,26 +61,10 @@ class PhpcsCommand extends BltTasks {
    * @return int
    */
   public function sniffFileList($file_list) {
-    $this->say("Sniffing files...");
-
-    $exit_code = 0;
+    $this->say("Sniffing directories containing changed files...");
     $files = explode("\n", $file_list);
-    /** @var \Acquia\Blt\Robo\Filesets\FilesetManager $fileset_manager */
-    $fileset_manager = $this->getContainer()->get('filesetManager');
-    $filesets_ids = $this->getConfigValue('phpcs.filesets');
-
-    foreach ($filesets_ids as $fileset_id) {
-      $fileset = $fileset_manager->getFileset($fileset_id);
-      if (!is_null($fileset)) {
-        $filtered_fileset = $fileset_manager->filterFilesByFileset($files, $fileset);
-        $filtered_fileset = iterator_to_array($filtered_fileset);
-        $files_in_fileset = array_keys($filtered_fileset);
-        $exit_code = $this->doSniffFileList($files_in_fileset);
-        if ($exit_code) {
-          return $exit_code;
-        }
-      }
-    }
+    $files = array_filter($files);
+    $exit_code = $this->doSniffFileList($files);
 
     return $exit_code;
   }
@@ -80,21 +72,29 @@ class PhpcsCommand extends BltTasks {
   /**
    * Executes PHP Code Sniffer against an array of files.
    *
-   * @param array $file_list
+   * @param array $files
    *   A flat array of absolute file paths.
    *
    * @return int
    */
-  protected function doSniffFileList($file_list) {
-    if ($file_list) {
+  protected function doSniffFileList(array $files) {
+    if ($files) {
       $temp_path = $this->getConfigValue('repo.root') . '/tmp/phpcs-fileset';
       $this->taskWriteToFile($temp_path)
-        ->lines($file_list)
+        ->lines($files)
         ->run();
 
       $bin = $this->getConfigValue('composer.bin') . '/phpcs';
+      $bootstrap = __DIR__ . "/phpcs-validate-files-bootstrap.php";
+      $command = "'$bin' --file-list='$temp_path' --bootstrap='$bootstrap' -l";
+      if ($this->output()->isVerbose()) {
+        $command .= ' -v';
+      }
+      elseif ($this->output()->isVeryVerbose()) {
+        $command .= ' -vv';
+      }
       $result = $this->taskExecStack()
-        ->exec("'$bin' --file-list='$temp_path' --standard='{$this->standard}'")
+        ->exec($command)
         ->printMetadata(FALSE)
         ->run();
 

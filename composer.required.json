@@ -6,22 +6,24 @@
     }
   },
   "require": {
-    "drupal/core": "^8.0",
+    "drupal/core": "^8.4.0",
     "drupal/features": "^3.0.0",
-    "drupal/config_split": "^1.0.0-beta4",
-    "drupal/devel": "^1.0.0-alpha1"
+    "drupal/config_split": "^1.0.0"
   },
   "require-dev": {
-    "cweagans/composer-patches": "^1.6.0",
-    "behat/behat": "^3.1",
+    "behat/behat": ">=3.1 <3.4",
     "behat/mink": "~1.7",
     "behat/mink-selenium2-driver": "^1.3.1",
     "bex/behat-screenshot": "^1.2",
-    "drupal/drupal-extension": "^3.2",
+    "drupal/drupal-extension": "~3.2",
     "drupal-composer/drupal-scaffold": "^2.1.0",
     "jarnaiz/behat-junit-formatter": "^1.3.2",
     "se/selenium-server-standalone": "^2.53",
-    "jakoch/phantomjs-installer":   "2.1.1-p07"
+    "jakoch/phantomjs-installer":   "2.1.1-p07",
+    "dmore/chrome-mink-driver": "2.4.0",
+    "dmore/behat-chrome-extension": "^1.0.0",
+    "mikey179/vfsStream": "~1.2",
+    "sensiolabs-de/deprecation-detector": "^0.1.0-alpha4"
   },
   "autoload-dev": {
     "psr-4": {
@@ -30,7 +32,12 @@
   },
   "autoload": {
     "psr-4": {
-      "Acquia\\Blt\\Custom\\": "../../../blt/src/"
+      "Acquia\\Blt\\Custom\\": "src/"
+    }
+  },
+  "config": {
+    "platform": {
+      "php": "7"
     }
   },
   "extra": {
@@ -39,15 +46,12 @@
       "initial": {
         "sites/default/default.services.yml": "sites/default/services.yml",
         "sites/default/default.settings.php": "sites/default/settings.php"
-      },
-      "excludes": [
-        "sites/development.services.yml"
-      ]
+      }
     },
     "enable-patching": true,
     "patches": {
       "drupal/core": {
-        "Clear Twig caches on deploys": "https://www.drupal.org/files/issues/no_reliable_method-2752961-29.patch"
+        "Clear Twig caches on deploys": "https://www.drupal.org/files/issues/2752961-90.patch"
       }
     }
   },
@@ -56,8 +60,8 @@
     "drupal-scaffold": "DrupalComposer\\DrupalScaffold\\Plugin::scaffold",
     "nuke": [
       "rm -rf vendor composer.lock docroot/core docroot/modules/contrib docroot/profiles/contrib docroot/themes/contrib",
-      "@composer clearcache",
-      "@composer install"
+      "@composer clearcache --ansi",
+      "@composer install --ansi"
     ],
     "install-phantomjs": [
       "rm -rf vendor/bin/phantomjs",

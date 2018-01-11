@@ -3,7 +3,9 @@
 namespace Acquia\Blt\Robo\Commands\Tests;
 
 use Acquia\Blt\Robo\BltTasks;
+use Acquia\Blt\Robo\Exceptions\BltException;
 use Robo\Contract\VerbosityThresholdInterface;
+use Symfony\Component\Console\Output\OutputInterface;
 
 /**
  * Defines commands in the "tests" namespace.
@@ -52,16 +54,50 @@ class PhpUnitCommand extends BltTasks {
     foreach ($this->phpunitConfig as $test) {
       $task = $this->taskPHPUnit()
         ->xml($this->reportFile)
-        ->arg('.')
         ->printOutput(TRUE)
         ->printMetadata(FALSE);
+
+      if (isset($test['class'])) {
+        $task->arg($test['class']);
+        if (isset($test['file'])) {
+          $task->arg($test['file']);
+        }
+      }
+      else {
+        if (isset($test['path'])) {
+          $task->arg($test['path']);
+        }
+      }
+
       if (isset($test['path'])) {
         $task->dir($test['path']);
       }
-      if (isset($test['config'])) {
-        $task->option('--configuration', $test['config']);
+
+      if ($this->output()->getVerbosity() >= OutputInterface::VERBOSITY_NORMAL) {
+        $task->printMetadata(TRUE);
+        $task->arg('-v');
       }
-      $task->run();
+
+      $supported_options = [
+        'config' => 'configuration',
+        'exclude-group' => 'exclude-group',
+        'filter' => 'filter',
+        'group' => 'group',
+        'testsuite' => 'testsuite',
+      ];
+
+      foreach ($supported_options as $yml_key => $option) {
+        if (isset($test[$yml_key])) {
+          $task->option("--$option", $test[$yml_key]);
+        }
+      }
+
+      $result = $task->run();
+      $exit_code = $result->getExitCode();
+
+      if ($exit_code) {
+        throw new BltException("PHPUnit tests failed.");
+      }
     }
   }
 

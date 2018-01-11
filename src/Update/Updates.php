@@ -4,6 +4,7 @@ namespace Acquia\Blt\Update;
 
 use Acquia\Blt\Annotations\Update;
 use Acquia\Blt\Robo\Common\ArrayManipulator;
+use function file_exists;
 
 /**
  * Defines scripted updates for specific version deltas of BLT.
@@ -296,15 +297,153 @@ class Updates {
     if (!empty($project_yml['behat']['launch-phantomjs']) && $project_yml['behat']['launch-phantomjs']) {
       $project_yml['behat']['web-driver'] = 'phantomjs';
     }
+    else {
+      $project_yml['behat']['web-driver'] = 'selenium';
+    }
     unset($project_yml['behat']['launch-selenium']);
     unset($project_yml['behat']['launch-phantomjs']);
-    $this->updater->writeProjectYml($project_yml);
 
-    if (file_exists($this->updater->getRepoRoot() . '/blt/composer.overrides.json')) {
-      $this->updater->getOutput()->writeln("<comment>blt/composer.overrides.json</comment> is no longer necessary.");
-      $this->updater->getOutput()->writeln("Instead, move your overrides to your root composer.json, and set extra.merge-plugin.ignore-duplicates to true.");
+    if (!empty($project_yml['multisite.name'])) {
+      $project_yml['multisites'][] = $project_yml['multisite.name'];
+      unset ($project_yml['multisite.name']);
+    }
+    unset($project_yml['import']);
+
+    if (file_exists($this->updater->getRepoRoot() . '/Vagrantfile')) {
+      $project_yml['vm']['enable'] = TRUE;
     }
 
     $this->updater->writeProjectYml($project_yml);
+
+    $messages = [
+      "You have updated to a new major version of BLT, which introduces backwards-incompatible changes.",
+      "You may need to perform the following manual update steps:",
+      "  - View the full list of commands via `blt list`, <comment>BLT commands have changed</comment>",
+      "  - Re-initialize default Drupal VM configuration via `blt vm:config`.",
+      "  - Re-initialize default Travis CI configuration via `blt ci:travis:init`.
+         - Re-initialize default Acquia Pipelines configuration via `blt ci:pipelines:init`.",
+      "  - Port custom Phing commands to Robo. All Phing commands are now obsolete. See:",
+      "    http://blt.readthedocs.io/en/8.x/readme/extending-blt/",
+    ];
+    if (file_exists($this->updater->getRepoRoot() . '/blt/composer.overrides.json')) {
+      $messages[] = "  - <comment>blt/composer.overrides.json</comment> is no longer necessary.";
+      $messages[] = "  -  Move your overrides to your root composer.json, and set extra.merge-plugin.ignore-duplicates to true.";
+    }
+    $formattedBlock = $this->updater->getFormatter()->formatBlock($messages, 'ice');
+    $this->updater->getOutput()->writeln("");
+    $this->updater->getOutput()->writeln($formattedBlock);
+    $this->updater->getOutput()->writeln("");
+  }
+
+  /**
+   * 8.9.1.
+   *
+   * @Update(
+   *   version = "8009001",
+   *   description = "Removing deprecated filesets."
+   * )
+   */
+  public function update_8009001() {
+    $project_yml = $this->updater->getProjectYml();
+    unset($project_yml['phpcs']['filesets']['files.php.custom.modules']);
+    unset($project_yml['phpcs']['filesets']['files.php.custom.themes']);
+    unset($project_yml['phpcs']['filesets']['files.php.tests']);
+    $this->updater->writeProjectYml($project_yml);
+  }
+
+  /**
+   * 8.9.3.
+   *
+   * @Update(
+   *    version = "8009003",
+   *    description = "Adding support for Asset Packagist."
+   * )
+   */
+  public function update_8009003() {
+    $composer_json = $this->updater->getComposerJson();
+
+    $composer_json['extra']['installer-types'][] = 'bower-asset';
+    $composer_json['extra']['installer-types'][] = 'npm-asset';
+    $composer_json['extra']['installer-paths']['docroot/libraries/{$name}'][] = 'type:bower-asset';
+    $composer_json['extra']['installer-paths']['docroot/libraries/{$name}'][] = 'type:npm-asset';
+
+    // Add the Asset Packagist repository if it does not already exist.
+    if (isset($composer_json['repositories'])) {
+      $repository_key = NULL;
+      foreach ($composer_json['repositories'] as $key => $repository) {
+        if ($repository['type'] == 'composer' && strpos($repository['url'], 'https://asset-packagist.org') === 0) {
+          $repository_key = $key;
+          break;
+        }
+      }
+      if (is_null($repository_key)) {
+        $composer_json['repositories']['asset-packagist'] = [
+          'type' => 'composer',
+          'url' => 'https://asset-packagist.org',
+        ];
+      }
+    }
+
+    $projectAcsfHooks = $this->updater->getRepoRoot() . '/factory-hooks';
+    $acsf_inited = file_exists($projectAcsfHooks);
+    if ($acsf_inited) {
+      $composer_json['config']['platform']['php'] = '5.6';
+    }
+
+    $this->updater->writeComposerJson($composer_json);
+
+    $messages = [
+      "Your composer.json file has been modified to be compatible with Lightning 2.1.8+.",
+      "You must execute `composer update` to update your lock file.",
+    ];
+    $formattedBlock = $this->updater->getFormatter()->formatBlock($messages, 'ice');
+    $this->updater->getOutput()->writeln("");
+    $this->updater->getOutput()->writeln($formattedBlock);
+    $this->updater->getOutput()->writeln("");
+  }
+
+  /**
+   * 8.9.7.
+   *
+   * @Update(
+   *    version = "8009007",
+   *    description = "Removing drush files."
+   * )
+   */
+  public function update_8009007() {
+    $this->updater->deleteFile('drush.wrapper');
+    $this->updater->deleteFile('.drush-use');
+
+    // Recommend drush upgrade.
+    $messages = [
+      "You should replace your local global installation of drush with drush launcher:",
+      "https://github.com/drush-ops/drush-launcher",
+    ];
+    $formattedBlock = $this->updater->getFormatter()->formatBlock($messages, 'ice');
+    $this->updater->getOutput()->writeln("");
+    $this->updater->getOutput()->writeln($formattedBlock);
+    $this->updater->getOutput()->writeln("");
+  }
+
+  /**
+   * 8.9.11.
+   *
+   * @Update(
+   *    version = "8009011",
+   *    description = "Move vm.enable from project.yml to project.local.yml."
+   * )
+   */
+  public function update_8009011() {
+    $project_yml = $this->updater->getProjectYml();
+    if (isset($project_yml['vm']['enable'])) {
+      // Add to project.local.yml.
+      $project_local_yml = $this->updater->getProjectLocalYml();
+      $project_local_yml['vm']['enable'] = $project_yml['vm']['enable'];
+      $this->updater->writeProjectLocalYml($project_local_yml);
+      // Remove from project.yml.
+      unset($project_yml['vm']);
+      $this->updater->writeProjectYml($project_yml);
+    }
+
   }
 }

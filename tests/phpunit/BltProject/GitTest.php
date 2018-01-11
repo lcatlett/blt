@@ -14,7 +14,7 @@ class GitTasksTest extends BltProjectTestBase {
   /**
    * Tests  setup:git-hooks command.
    *
-   * @group blt-project
+   * @group blted8
    */
   public function testGitConfig() {
     $this->assertFileExists($this->projectDirectory . '/.git');
@@ -34,7 +34,7 @@ class GitTasksTest extends BltProjectTestBase {
    *
    * @dataProvider providerTestGitHookCommitMsg
    *
-   * @group blt-project
+   * @group blted8
    */
   public function testGitHookCommitMsg($is_valid, $commit_message, $message = NULL) {
     $this->assertCommitMessageValidity($is_valid, $commit_message, $message);
@@ -53,6 +53,7 @@ class GitTasksTest extends BltProjectTestBase {
       array(FALSE, "{$prefix}-123: This is a bad commit", 'Missing period.'),
       array(FALSE, "{$prefix}-123: Hello.", 'Too short.'),
       array(FALSE, "NOT-123: This is a bad commit.", 'Wrong project prefix.'),
+      array(TRUE, "Merge branch 'master' into feature/foo", 'Good commit.'),
       array(TRUE, "{$prefix}-123: This is a good commit.", 'Good commit.'),
       array(TRUE, "{$prefix}-123: This is an exceptionally long--seriously, really, really, REALLY long, but still good commit.", 'Long good commit.',
       ),
@@ -64,7 +65,7 @@ class GitTasksTest extends BltProjectTestBase {
    *
    * Should assert that code validation via phpcs is functioning.
    *
-   * @group blt-project
+   * @group blted8
    */
   public function testGitPreCommitHook() {
     // Commits must be executed inside of new project directory.
@@ -72,6 +73,7 @@ class GitTasksTest extends BltProjectTestBase {
     $prefix = $this->config['project']['prefix'];
     $command = "./.git/hooks/pre-commit";
     $output = shell_exec($command);
+    // @todo Assert only changed files are validated.
     $this->assertContains('validate:phpcs:files', $output);
     $this->assertContains('validate:yaml:files', $output);
     $this->assertContains('validate:twig:files', $output);

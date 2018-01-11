@@ -2,16 +2,16 @@
 
 [![Build Status](https://travis-ci.org/acquia/blt.svg?branch=8.x)](https://travis-ci.org/acquia/blt) [![Documentation Status](https://readthedocs.org/projects/blt/badge/?version=8.x)](http://blt.readthedocs.io/en/8.x/?badge=8.x) [![Packagist](https://img.shields.io/packagist/v/acquia/blt.svg)](https://packagist.org/packages/acquia/blt) [![Stories in Ready](https://badge.waffle.io/acquia/blt.png?label=ready&title=Ready)](http://waffle.io/acquia/blt)
 
-BLT (Build and Launch Tool) is a tool that generates new Drupal projects using a standardized template derived from Acquia Professional Services' best practices.
+BLT (Build and Launch Tool) provides an automation layer for testing, building, and launching Drupal 8 applications.
 
 You can find all BLT documentation on [Read the Docs](http://blt.readthedocs.io):
 
-* [Latest release documentation](http://blt.readthedocs.io/en/stable/)
-* [Latest documentation (8.x / 8.x-dev)](http://blt.readthedocs.io/en/latest/)
+* [Latest documentation (9.0.x / 9.1.x)](http://blt.readthedocs.io/en/latest/) (best for guidance on general issues and best practices)
+* [Stable release documentation (8.9.x)](http://blt.readthedocs.io/en/stable/) (best for features specific to 8.9.x)
 
 ## Getting started
 
-See [INSTALL.md](INSTALL.md) for a list of prequisites and links to instructions for [creating new projects](https://github.com/acquia/blt/blob/8.x/readme/creating-new-project.md), [adding BLT to existing projects](https://github.com/acquia/blt/blob/8.x/readme/adding-to-project.md), and [updating BLT](https://github.com/acquia/blt/blob/8.x/readme/updating-blt.md). 
+See [INSTALL.md](INSTALL.md) for a list of prequisites and links to instructions for [creating new projects](https://github.com/acquia/blt/blob/8.x/readme/creating-new-project.md), [adding BLT to existing projects](https://github.com/acquia/blt/blob/8.x/readme/adding-to-project.md), and [updating BLT](https://github.com/acquia/blt/blob/8.x/readme/updating-blt.md).
 
 ## Videos
 
@@ -19,8 +19,6 @@ See [INSTALL.md](INSTALL.md) for a list of prequisites and links to instructions
 * [Deploying to Acquia Cloud](https://www.youtube.com/watch?v=jjnPMvZ2x-c)
 
 ## Releases and versioning
-
-BLT does not use Semver. Instead, it uses `[drupal-major-version]-[blt-major-version]-[blt-minor-version]`. E.g., 8.8.1.
 
 Typically, the last two most major versions of BLT are supported actively. The newest major version will recieve both bug fixes and new features, while the penultimate major version will recieve bug fixes for at least two months. For example, if 8.8.1 is the most recent version of BLT:
 
@@ -32,6 +30,34 @@ Typically, the last two most major versions of BLT are supported actively. The n
     * 8.9.x will be created for major new features.
 * At some point later, 8.9.0 will be cut, and 8.8.x will enter "LTS".
 
+### Release support status
+
+| Major Version | Support Status              | Drupal | Drush          | Dev Status   |
+|---------------|-----------------------------|--------|----------------|--------------|
+| 9.1.x         | Supported                   | >=8.4  | >=9.0.0-rc1    | \*active dev |
+| 9.0.x         | Supported                   | >=8.4  | >=9.0.0-rc1    | bug fixes    |
+| 8.9.x         | LTS (see below)             | <=8.4  | ~8             | bug fixes    |
+| 8.8.x         | Unsupported, EOL            | <=8.3  | ~8             |              |
+| 8.7.x         | Unsupported, EOL            | <=8.3  | ~8             |              |
+
+### 9.1.x branch
+
+The 9.1.x branch is currently in development and primarily improves support for users with multisite and ACSF installations.
+
+### 9.0.x branch
+
+The 9.0.x is functionally equivalent to 8.9.x. The only difference is that is supports Drush 9 instead of Drush 8. This is intented to be a transitional release to allow projects to gradually migrate from Drush 8 to Drush 9 (since this is a non-trivial upgrade).
+
+### 8.9.x End of Life (EOL)
+
+8.9.x is currently in maintenance / long-term support mode (receiving only bug fixes) while we focus on feature development for 9.1.x. 8.9.x will continue to be supported until the following conditions are met:
+
+* Drush 9 has a stable release
+* ACSF is compatible with Drush 9
+* BLT 9.1.0 is released with full support for ACSF users
+
+The current ETA for this cutoff is Q1 2018.
+
 ## Philosophy and Purpose
 
 BLT is designed to improve efficiency and collaboration across Drupal projects by providing a common set of tools and standardized structure. It was born out of the need to reduce re-work, project set up time, and developer onboarding time.
@@ -39,7 +65,7 @@ BLT is designed to improve efficiency and collaboration across Drupal projects b
 Its explicit goals are to:
 
 * Provide a standard project template for Drupal based projects
-* Provide tools that automate much of the setup and maintenance work for projects
+* Provide tools that automate the setup, testing, launching, and maintenance work for projects
 * Document and enforce Drupal standards and best practices via default configuration, automated testing, and continuous integration
 
 Its scope is discretely defined. It is *not* intended to provide:
@@ -50,24 +76,21 @@ Its scope is discretely defined. It is *not* intended to provide:
 
 ## Features
 
-* [Git Hooks](scripts/git-hooks)
+* [Local Git Hooks](scripts/git-hooks)
     * pre-commit: Checks for Drupal coding standards compliance
     * commit-msg: Check for proper formatting and syntax
 * [Testing Framework](template/tests).
     * Behat: default `local.yml` configuration, example tests, `FeatureContext.php`
     * PHPUnit: default tests for ensuring proper functioning of BLT provided components
-* [Project tasks](readme/project-tasks.md)
-    * Executing tests and validating code
-    * Building dependencies
-        * Management of Drupal core, contrib, and third party libraries via Composer
-        * Building front end assets. E.g, via gulp, npm, bower, etc.
-    * (Re)installation of Drupal
-      * Configuration import
-* [Artifact Generation](readme/deploy.md)
+* [Commands to automate project tasks](readme/project-tasks.md), like:
+    * Test execution
+    * Frontend asset compilation
+    * Syncing environments
+* [Deployment Artifact Generation](readme/deploy.md)
     * Building production-only dependencies
     * Sanitation of production code
 * [Continuous Integration & Deployment](readme/ci.md)
-    * [Acquia Pipelines](https://dev.acquia.com/request-invite-acquia-pipelines) (coming soon)
+    * [Acquia Pipelines](https://dev.acquia.com/request-invite-acquia-pipelines)
     * [Travis CI](https://travis-ci.com)
     * [GitHub](https://github.com)
 
