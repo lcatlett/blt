@@ -302,8 +302,12 @@ if ($is_local_env) {
   if (file_exists(DRUPAL_ROOT . "/sites/settings/local.settings.php")) {
     require DRUPAL_ROOT . "/sites/settings/local.settings.php";
   }
-  // Load local settings for given single.
+  // Load local settings for given single sute.
   if (file_exists(DRUPAL_ROOT . "/sites/$site_dir/settings/local.settings.php")) {
     require DRUPAL_ROOT . "/sites/$site_dir/settings/local.settings.php";
+  }
+  // Load local site mapping for given multisites.
+  if (file_exists(DRUPAL_ROOT . "/sites/local.sites.php")) {
+    require DRUPAL_ROOT . "/sites/local.sites.php";
   }
 }

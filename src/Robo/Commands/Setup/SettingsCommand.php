@@ -15,42 +15,51 @@ use Symfony\Component\Filesystem\Filesystem;
  */
 class SettingsCommand extends BltTasks {
 
-  protected $defaultBehatLocalConfigFile;
-  protected $projectBehatLocalConfigFile;
+protected $defaultBehatLocalConfigFile;
+protected $projectBehatLocalConfigFile;
 
-  /**
-   * This hook will fire for all commands in this command file.
-   *
-   * @hook init
-   */
-  public function initialize() {
-    $this->defaultBehatLocalConfigFile = $this->getConfigValue('repo.root') . '/tests/behat/example.local.yml';
-    $this->projectBehatLocalConfigFile = $this->getConfigValue('repo.root') . '/tests/behat/local.yml';
+/**
+ * This hook will fire for all commands in this command file.
+ *
+ * @hook init
+ */
+public function initialize() {
+  $this->defaultBehatLocalConfigFile = $this->getConfigValue('repo.root') . '/tests/behat/example.local.yml';
+  $this->projectBehatLocalConfigFile = $this->getConfigValue('repo.root') . '/tests/behat/local.yml';
+}
+
+/**
+ * Generates default settings files for Drupal and drush.
+ *
+ * @command blt:init:settings
+ *
+ * @aliases bis settings setup:settings
+ */
+public function generateSiteConfigFiles() {
+  if (!file_exists($this->getConfigValue('blt.config-files.local'))) {
+    $result = $this->taskFilesystemStack()
+      ->copy($this->getConfigValue('blt.config-files.example-local'), $this->getConfigValue('blt.config-files.local'))
+      ->stopOnFail()
+      ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
+      ->run();
+
+    if (!$result->wasSuccessful()) {
+      $filepath = $this->getInspector()->getFs()->makePathRelative($this->getConfigValue('blt.config-files.local'), $this->getConfigValue('repo.root'));
+      throw new BltException("Unable to create $filepath.");
+    }
   }
 
-  /**
-   * Generates default settings files for Drupal and drush.
-   *
-   * @command blt:init:settings
-   *
-   * @aliases bis settings setup:settings
-   */
-  public function generateSiteConfigFiles() {
-    if (!file_exists($this->getConfigValue('blt.config-files.local'))) {
-      $result = $this->taskFilesystemStack()
-        ->copy($this->getConfigValue('blt.config-files.example-local'), $this->getConfigValue('blt.config-files.local'))
-        ->stopOnFail()
-        ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
-        ->run();
+  // Generate hash file in salt.txt.
+  $this->hashSalt();
 
-      if (!$result->wasSuccessful()) {
-        $filepath = $this->getInspector()->getFs()->makePathRelative($this->getConfigValue('blt.config-files.local'), $this->getConfigValue('repo.root'));
-        throw new BltException("Unable to create $filepath.");
-      }
-    }
+  $result = $this->taskWriteToFile($this->getConfigValue('docroot') . "/sites/sites.php")
+    ->appendUnlessMatches('#sites/local.sites.php#', 'include DRUPAL_ROOT . "/sites/local.sites.php";' . "\n")
+    ->append(TRUE)
+    ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
+    ->run();
 
-    // Generate hash file in salt.txt.
-    $this->hashSalt();
+  if (!$result->wasSuccessful()) {
+    throw new BltException("Unable to include local.sites.php in sites.php");
 
     $default_multisite_dir = $this->getConfigValue('docroot') . "/sites/default";
     $default_project_default_settings_file = "$default_multisite_dir/default.settings.php";
@@ -159,7 +168,7 @@ class SettingsCommand extends BltTasks {
 
     // Generate sites.php for local multisite.
     $contents = "<?php\n \$sites = " . var_export($sites, TRUE) . ";";
-    file_put_contents($this->getConfigValue('docroot') . "/sites/sites.php", $contents);
+    file_put_contents($this->getConfigValue('docroot') . "/sites/local.sites.php", $contents);
 
     if ($current_site != $initial_site) {
       $this->switchSiteContext($initial_site);
