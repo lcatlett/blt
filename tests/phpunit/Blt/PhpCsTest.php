@@ -1,6 +1,6 @@
 <?php
 
-namespace Acquia\Blt\Tests\Blt;
+    namespace Acquia\Blt\Tests\Blt;
 
 use Acquia\Blt\Tests\BltTestBase;
 use Symfony\Component\Process\Process;
@@ -18,7 +18,7 @@ class PhpCsTest extends BltTestBase {
    * @dataProvider testPhpCsFilesBootstrapProvider
    */
   public function testPhpCsFilesBootstrap($filename, $needle, $contains) {
-    $process = new Process("./vendor/bin/phpcs $filename --bootstrap=src/Robo/Commands/Validate/phpcs-validate-files-bootstrap.php -v");
+    $process = new Process("./vendor/bin/phpcs -v $filename");
     $process->setWorkingDirectory($this->bltDirectory);
     $process->run();
     $output = $process->getOutput();
@@ -35,16 +35,16 @@ class PhpCsTest extends BltTestBase {
    */
   public function testPhpCsFilesBootstrapProvider() {
     return [
-      // Test ignored extension.
-      ['CHANGELOG.md', 'Processing CHANGELOG.md', FALSE],
-      // Test included file.
-      ['RoboFile.php', 'Processing RoboFile.php', TRUE],
-      // Test ignored directory.
-      [
-        'vendor/composer/autoload_classmap.php',
-        'Processing RoboFile.php',
-        FALSE,
-      ],
+            // Test ignored extension.
+            ['CHANGELOG.md', 'Processing CHANGELOG.md', FALSE],
+            // Test included file.
+            ['RoboFile.php', 'Processing RoboFile.php', TRUE],
+            // Test ignored directory.
+            [
+              'vendor/composer/autoload_classmap.php',
+              'Processing RoboFile.php',
+              FALSE,
+            ],
     ];
   }
 
