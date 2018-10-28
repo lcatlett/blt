@@ -35,7 +35,7 @@ class SandboxManager {
     $this->tmp = sys_get_temp_dir();
     $this->sandboxMaster = $this->tmp . "/blt-sandbox-master";
     $this->sandboxInstance = $this->tmp . "/blt-sandbox-instance";
-    $this->bltDir = realpath(dirname(__FILE__) . '/../../../'); .
+    $this->bltDir = realpath(dirname(__FILE__) . '/../../../'); 
   }
 
   /**
