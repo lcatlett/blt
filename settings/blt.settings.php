@@ -1,11 +1,11 @@
-    <?php
+<?php
 
-  /**
-   * @file
-   * Setup BLT utility variables, include required files.
-   */
+    /**
+     * @file
+     * Setup BLT utility variables, include required files.
+     */
 
-use Acquia\Blt\Robo\Config\ConfigInitializer;
+    use Acquia\Blt\Robo\Config\ConfigInitializer;
 use Drupal\Component\Utility\Bytes;
 use Symfony\Component\Console\Input\ArgvInput;
 
@@ -23,8 +23,8 @@ $http_x_request_id = getenv('HTTP_X_REQUEST_ID');
 // Tell Drupal whether the client arrived via HTTPS. Ensure the
 // request is coming from our load balancers by checking the IP address.
 if (getenv('HTTP_X_FORWARDED_PROTO') == 'https'
- && getenv('REMOTE_ADDR')
- && in_array(getenv('REMOTE_ADDR'), $trusted_reverse_proxy_ips)) {
+    && getenv('REMOTE_ADDR')
+    && in_array(getenv('REMOTE_ADDR'), $trusted_reverse_proxy_ips)) {
   $_ENV['HTTPS'] = 'on';
   $_SERVER['HTTPS'] = 'on';
   putenv('HTTPS=on');
