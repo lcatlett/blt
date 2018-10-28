@@ -2,7 +2,6 @@
 
 namespace Acquia\Blt\Tests;
 
-use Drupal\Component\FileCache\FileCacheFactory;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
@@ -36,15 +35,6 @@ class SandboxManager {
     $this->tmp = sys_get_temp_dir();
     $this->sandboxMaster = $this->tmp . "/blt-sandbox-master";
     $this->sandboxInstance = $this->tmp . "/blt-sandbox-instance";
-    // Ensure that an instantiated container in the global state of \Drupal from
-    // a previous test does not leak into this test.
-    \Drupal::unsetContainer();
-    // Ensure that the NullFileCache implementation is used for the FileCache as
-    // unit tests should not be relying on caches implicitly.
-    FileCacheFactory::setConfiguration([FileCacheFactory::DISABLE_CACHE => TRUE]);
-    // Ensure that FileCacheFactory has a prefix.
-    FileCacheFactory::setPrefix('prefix');
-
     $this->bltDir = dirname(dirname(substr(__DIR__, 0, -strlen(__NAMESPACE__))));
     // $this->bltDir = realpath(dirname(__FILE__) . '/../../../');.
   }
