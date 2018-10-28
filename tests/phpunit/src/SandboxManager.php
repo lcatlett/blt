@@ -2,6 +2,7 @@
 
 namespace Acquia\Blt\Tests;
 
+use Drupal\Component\FileCache\FileCacheFactory;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
@@ -19,6 +20,12 @@ class SandboxManager {
   /** @var \Symfony\Component\Console\Output\ConsoleOutput*/
   protected $output;
   protected $tmp;
+  /**
+   * The app root.
+   *
+   * @var string
+   */
+  protected $root;
 
   /**
    * SandboxManager constructor.
@@ -29,7 +36,17 @@ class SandboxManager {
     $this->tmp = sys_get_temp_dir();
     $this->sandboxMaster = $this->tmp . "/blt-sandbox-master";
     $this->sandboxInstance = $this->tmp . "/blt-sandbox-instance";
-    $this->bltDir = realpath(dirname(__FILE__) . '/../../../');
+    // Ensure that an instantiated container in the global state of \Drupal from
+    // a previous test does not leak into this test.
+    \Drupal::unsetContainer();
+    // Ensure that the NullFileCache implementation is used for the FileCache as
+    // unit tests should not be relying on caches implicitly.
+    FileCacheFactory::setConfiguration([FileCacheFactory::DISABLE_CACHE => TRUE]);
+    // Ensure that FileCacheFactory has a prefix.
+    FileCacheFactory::setPrefix('prefix');
+
+    $this->bltDir = dirname(dirname(substr(__DIR__, 0, -strlen(__NAMESPACE__))));
+    // $this->bltDir = realpath(dirname(__FILE__) . '/../../../');.
   }
 
   /**
@@ -158,7 +175,7 @@ class SandboxManager {
     $command = '';
     $drupal_core_version = getenv('DRUPAL_CORE_VERSION');
     if ($drupal_core_version && $drupal_core_version != 'default') {
-      $command .= 'composer require "drupal/core:' . $drupal_core_version . '" --no-update --no-interaction && ';
+      $command .= 'composer require "drupal/core:' . $drupal_core_version . '" --no-update --no-interaction ';
     }
     $command .= 'composer install --prefer-dist --no-progress --no-suggest';
 
