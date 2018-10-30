@@ -166,7 +166,7 @@ class SandboxManager {
     if ($drupal_core_version && $drupal_core_version != 'default') {
       $command .= 'composer require "drupal/core:' . $drupal_core_version . '" --no-update --no-interaction ';
     }
-    $command .= 'composer install --prefer-dist --no-progress --no-suggest';
+    $command .= 'composer install --prefer-dist --no-progress --no-suggest -vvv';
 
     $process = new Process($command, $this->sandboxMaster);
     $process->setTimeout(60 * 60);
