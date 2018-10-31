@@ -27,6 +27,7 @@
         "doctrine/inflector": "~1.1.0",
         "drupal/coder": "^8.3.1",
         "drush/drush": "^9.4.0",
+        "consolidation/site-alias": "^1.1.9",
         "gordalina/cachetool": "3.2.1",
         "grasmash/drupal-security-warning": "^1.0.0",
         "grasmash/yaml-cli": "^1.0.0",
