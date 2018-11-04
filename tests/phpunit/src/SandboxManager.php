@@ -10,14 +10,14 @@ use Symfony\Component\Filesystem\Filesystem;
  */
 class SandboxManager {
 
-/** @var \Symfony\Component\Filesystem\Filesystem*/
-protected $fs;
-protected $bltDir;
-protected $sandboxMaster;
-protected $sandboxInstance;
-/** @var \Symfony\Component\Console\Output\ConsoleOutput*/
-protected $output;
-protected $tmp;
+  /** @var \Symfony\Component\Filesystem\Filesystem*/
+  protected $fs;
+  protected $bltDir;
+  protected $sandboxMaster;
+  protected $sandboxInstance;
+  /** @var \Symfony\Component\Console\Output\ConsoleOutput*/
+  protected $output;
+  protected $tmp;
 
 /**
  * SandboxManager constructor.
@@ -121,7 +121,7 @@ protected function copySandboxMasterToInstance($options = [
 ]) {
   $this->debug("Copying sandbox master to sandbox instance...");
   $this->fs->mirror($this->sandboxMaster, $this->sandboxInstance, NULL,
-  $options);
+    $options);
 }
 
 /**
@@ -147,26 +147,26 @@ protected function updateSandboxMasterBltRepoSymlink() {
   $composer_json_contents = json_decode(file_get_contents($composer_json_path));
   $composer_json_contents->repositories->blt->url = $this->bltDir;
   $this->fs->dumpFile($composer_json_path,
-  json_encode($composer_json_contents, JSON_PRETTY_PRINT));
+    json_encode($composer_json_contents, JSON_PRETTY_PRINT));
 }
 
 /**
  * Installs composer dependencies in sandbox master dir.
  */
 protected function installSandboxMasterDependencies() {
-$command = '';
-$repo_composer_json = $this->sandboxMaster . "/composer.json";
-$drupal_core_version = getenv('DRUPAL_CORE_VERSION');
-if ($drupal_core_version && $drupal_core_version != 'default') {
-  $command .= 'composer require "drupal/core:' . $drupal_core_version . '" --no-update --no-interaction ';
-}
-    $command .= 'composer install --prefer-dist --no-progress --no-suggest --working-dir=' . $repo_composer_json  . '" -vvv ';
-
-    $process = new Process($command, $this->sandboxMaster);
-    $process->setTimeout(60 * 60);
-    $process->run(function ($type, $buffer) {
-      $this->output->write($buffer);
-    });
+  $command = '';
+  $repo_composer_json = $this->sandboxMaster . "/composer.json";
+  $drupal_core_version = getenv('DRUPAL_CORE_VERSION');
+  if ($drupal_core_version && $drupal_core_version != 'default') {
+    $command .= 'composer require "drupal/core:' . $drupal_core_version . '" --no-update --no-interaction ';
   }
+  $command .= 'composer install --prefer-dist --no-progress --no-suggest "--working-dir=' . $repo_composer_json  . '" -vvv ';
+
+  $process = new Process($command, $this->sandboxMaster);
+  $process->setTimeout(60 * 60);
+  $process->run(function ($type, $buffer) {
+    $this->output->write($buffer);
+  });
+}
 
 }-
