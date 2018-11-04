@@ -32,7 +32,6 @@ cache:
   - "$HOME/.console"
   - "$HOME/.drush/cache"
   - "$HOME/.nvm"
-  -  "/tmp/blt-sandbox-instance/.rules"
 
 services:
 - memcached
@@ -51,6 +50,7 @@ before_install:
   - phpenv config-rm xdebug.ini
   - phpenv config-add travis.php.ini
   - composer self-update --snapshot
+  - export PATH="$HOME/.composer/vendor/bin:$TRAVIS_BUILD_DIR/vendor/bin:$PATH"
   - composer validate --no-check-all --ansi
   - composer config --list
   - composer install -vvv
