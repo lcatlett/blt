@@ -50,9 +50,11 @@ before_install:
   - sudo service memcached status
   - phpenv config-rm xdebug.ini
   - phpenv config-add travis.php.ini
-  - composer self-update
+  - composer self-update --snapshot
   - composer validate --no-check-all --ansi
-  - composer install
+  - composer diagnose
+  - composer config --list
+  - composer install --vvv
 
 install:
   - source ${BLT_DIR}/scripts/travis/setup_environment
