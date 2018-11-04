@@ -52,7 +52,6 @@ before_install:
   - phpenv config-add travis.php.ini
   - composer self-update --snapshot
   - composer validate --no-check-all --ansi
-  - composer diagnose
   - composer config --list
   - composer install --vvv
 
