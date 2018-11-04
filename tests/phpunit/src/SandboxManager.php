@@ -155,13 +155,12 @@ protected function updateSandboxMasterBltRepoSymlink() {
  */
 protected function installSandboxMasterDependencies() {
 $command = '';
-
-$composer_json_path = $this->sandboxMaster . "/composer.json";
+$repo_composer_json = $this->sandboxMaster . "/composer.json";
 $drupal_core_version = getenv('DRUPAL_CORE_VERSION');
 if ($drupal_core_version && $drupal_core_version != 'default') {
   $command .= 'composer require "drupal/core:' . $drupal_core_version . '" --no-update --no-interaction ';
 }
-$command .= 'composer install --prefer-dist --no-progress --no-suggest --working-dir=' . $composerJson . '-vvv';
+    $command .= 'composer install --prefer-dist --no-progress --no-suggest --working-dir=' . $repo_composer_json  . '" -vvv ';
 
     $process = new Process($command, $this->sandboxMaster);
     $process->setTimeout(60 * 60);
