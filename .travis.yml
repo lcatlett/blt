@@ -53,7 +53,7 @@ before_install:
   - composer self-update --snapshot
   - composer validate --no-check-all --ansi
   - composer config --list
-  - composer install --vvv
+  - composer install -vvv
 
 install:
   - source ${BLT_DIR}/scripts/travis/setup_environment
