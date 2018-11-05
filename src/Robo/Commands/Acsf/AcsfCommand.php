@@ -42,7 +42,7 @@ class AcsfCommand extends BltTasks {
       'package_name' => 'drupal/acsf',
       'package_version' => $options['acsf-version'],
     ];
-      $this->taskExecStack()
+    $this->taskExecStack()
       ->dir($this->getConfigValue('repo.root'))
       ->exec("rm -rf vendor/composer;")
       ->run();
