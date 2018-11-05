@@ -156,15 +156,11 @@ class SandboxManager {
    */
   protected function installSandboxMasterDependencies() {
     $command = '';
-
-    $this->output->writeln("Updating dependencies in sandbox <comment>
-      {$this->sandboxMaster}</comment>...");
-
-
     $drupal_core_version = getenv('DRUPAL_CORE_VERSION');
     if ($drupal_core_version && $drupal_core_version != 'default') {
       $command .= 'composer require "drupal/core:' . $drupal_core_version . '" --no-update --no-interaction && ';
-    $command .= 'composer install --prefer-dist --no-progress --no-suggest "--working-dir=' . $repo_composer_json  . '" -vvv ';
+    }
+    $command .= 'composer install --prefer-dist --no-progress --no-suggest "--working-dir=' . $repo_composer_json . '" -vvv ';
 
     $process = new Process($command, $this->sandboxMaster);
     $process->setTimeout(60 * 60);
