@@ -23,6 +23,7 @@ class ComposerCommand extends BltTasks {
 
     /** @var \Robo\Task\Composer\RequireDependency $task */
     $task = $this->taskComposerRequire()
+      ->optimizeAutoloader()
       ->printOutput(TRUE)
       ->printMetadata(TRUE)
       ->dir($this->getConfigValue('repo.root'))
