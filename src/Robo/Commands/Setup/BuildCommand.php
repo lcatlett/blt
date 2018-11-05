@@ -101,7 +101,7 @@ class BuildCommand extends BltTasks {
    * @aliases sbc setup:composer:install
    */
   public function composerInstall() {
-    $result = $this->taskExec("composer install --ansi --no-interaction -vvv")
+    $result = $this->taskExec("composer install -o --ansi --no-interaction -vvv")
       ->dir($this->getConfigValue('repo.root'))
       ->interactive($this->input()->isInteractive())
       ->setVerbosityThreshold(VerbosityThresholdInterface::VERBOSITY_VERBOSE)
