@@ -57,8 +57,14 @@
       "rm -rf vendor/bin/phantomjs",
       "PhantomInstaller\\Installer::installPhantomJS"
     ],
-     "cachetool": [
+    "cachetool": [
       "./vendor/bin/cachetool"
+    ],
+    "post-install-cmd": [
+      "DrupalProject\\composer\\ScriptHandler::createRequiredFiles"
+    ],
+    "post-update-cmd": [
+      "DrupalProject\\composer\\ScriptHandler::createRequiredFiles"
     ]
   }
 }
