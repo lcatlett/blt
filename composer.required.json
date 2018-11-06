@@ -18,7 +18,8 @@
     "se/selenium-server-standalone": "^2.53",
     "jakoch/phantomjs-installer":   "2.1.1-p07",
     "dmore/behat-chrome-extension": "^1.0.0",
-    "sensiolabs-de/deprecation-detector": "dev-master"
+    "sensiolabs-de/deprecation-detector": "dev-master",
+    "webflo/drupal-core-require-dev": "^8.6.0"
   },
   "autoload-dev": {
     "psr-4": {
@@ -32,9 +33,6 @@
   },
   "extra": {
     "composer-exit-on-patch-failure": true,
-     "installer-paths": {
-            "docroot/core": ["type:drupal-core"]
-          },
     "drupal-scaffold": {
       "initial": {
         "sites/default/default.services.yml": "sites/default/services.yml",

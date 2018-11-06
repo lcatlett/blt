@@ -92,8 +92,8 @@ class RoboFile extends Tasks implements LoggerAwareInterface {
       ->exec("composer install")
       // I have no idea why this is necessary, but testing on OSX does not pass
       // without it.
-      ->exec("rm -rf $test_project_dir/vendor")
-      ->exec("composer install");
+      ->exec("composer config --list")
+      ->exec("composer status -v");
     if ($options['vm']) {
       $task->exec("$bin/blt vm --no-boot --no-interaction --yes -v")
         ->exec("$bin/yaml-cli update:value box/config.yml vagrant_synced_folders.1.local_path '../blt'")
