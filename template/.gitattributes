@@ -82,8 +82,7 @@
 
 /.gitattributes     export-ignore
 /.circleci					export-ignore
-/.docker						export-ignore
+/vendor		export-ignore
+/composer.lock
 /build              export-ignore
-/scenarios          export-ignore
-/sut			          export-ignore
 /tests							export-ignore
