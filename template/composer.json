@@ -2,7 +2,8 @@
     "license": "proprietary",
     "type": "project",
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "optimize-autoloader": true
         },
     "require": {
         "symfony/flex": "^1.1"
