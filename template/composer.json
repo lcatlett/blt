@@ -4,7 +4,17 @@
     "config": {
         "sort-packages": true,
         "optimize-autoloader": true
+    },
+    "repositories": {
+        "drupal": {
+            "type": "composer",
+            "url": "https://packages.drupal.org/8"
         },
+        "asset-packagist": {
+            "type": "composer",
+            "url": "https://asset-packagist.org"
+        }
+    },
     "require": {
         "symfony/flex": "^1.1"
     },
