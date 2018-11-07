@@ -19,7 +19,7 @@ class PhpCsTest extends BltTestBase {
    */
   public function testPhpCsFilesBootstrap($filename, $needle, $contains) {
     $process = new Process("./vendor/bin/phpcs -v $filename");
-    $process->setWorkingDirectory($this->bltDirectory);
+    $process->setWorkingDirectory($this);
     $process->run();
     $output = $process->getOutput();
     if ($contains) {
