@@ -49,7 +49,7 @@ before_install:
   - sudo service memcached status
   - phpenv config-rm xdebug.ini
   - phpenv config-add travis.php.ini
-  - composer self-update --snapshot
+  - composer self-update --rollback
   - export PATH="$HOME/.composer/vendor/bin:$TRAVIS_BUILD_DIR/vendor/bin:$PATH"
   - composer validate --no-check-all --ansi
   - composer config --list
