@@ -8,12 +8,22 @@
             "url": "../blt",
             "options": {
                 "symlink": true
-            }
-        }
-    },
-    "require": {
-        "acquia/blt": "*@dev"
-    },
-    "minimum-stability": "dev",
-    "prefer-stable": true
-}
+            },
+            "repositories": {
+                "drupal": {
+                    "type": "composer",
+                    "url": "https://packages.drupal.org/8"
+                },
+                "asset-packagist": {
+                    "type": "composer",
+                    "url": "https://asset-packagist.org"
+                }
+            },
+
+        },
+        "require": {
+            "acquia/blt": "*@dev"
+        },
+        "minimum-stability": "dev",
+        "prefer-stable": true
+    }

@@ -89,11 +89,9 @@ class RoboFile extends Tasks implements LoggerAwareInterface {
     $task = $this->taskExecStack()
       ->dir($test_project_dir)
       // BLT is the only dependency at this point. Install it.
-      ->exec("composer install")
-      // I have no idea why this is necessary, but testing on OSX does not pass
-      // without it.
+      ->exec("composer install --working-dir=" . '$test_project_dir')
       ->exec("rm -rf $test_project_dir/vendor")
-      ->exec("composer install");
+      ->exec("composer install -o --working-dir=" . '$test_project_dir');
     if ($options['vm']) {
       $task->exec("$bin/blt vm --no-boot --no-interaction --yes -v")
         ->exec("$bin/yaml-cli update:value box/config.yml vagrant_synced_folders.1.local_path '../blt'")
@@ -152,7 +150,7 @@ class RoboFile extends Tasks implements LoggerAwareInterface {
     $task = $this->taskExecStack()
       ->dir($test_project_dir)
       // BLT is the only dependency at this point. Install it.
-      ->exec("composer require acquia/blt {$options['base-branch']}-dev");
+      ->exec("composer require acquia/blt {$options['base-branch']}-dev -o");
     if ($options['vm']) {
       $task->exec("$bin/blt vm --no-boot --no-interaction --yes -v");
     }

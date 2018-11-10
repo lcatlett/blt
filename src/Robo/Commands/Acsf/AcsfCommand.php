@@ -42,6 +42,10 @@ class AcsfCommand extends BltTasks {
       'package_name' => 'drupal/acsf',
       'package_version' => $options['acsf-version'],
     ];
+    $this->taskExecStack()
+      ->dir($this->getConfigValue('repo.root'))
+      ->exec("rm -rf vendor;")
+      ->run();
     $this->invokeCommand('internal:composer:require', $package_options);
     $this->say("In the future, you may pass in a custom value for acsf-version to override the default version, e.g., blt recipes:acsf:init:all --acsf-version='8.1.x-dev'");
     $this->acsfDrushInitialize();
@@ -49,7 +53,12 @@ class AcsfCommand extends BltTasks {
     $package_options = [
       'package_name' => 'acquia/acsf-tools',
       'package_version' => 'dev-9.x-dev',
+      ['dev' => TRUE],
     ];
+    $this->taskExecStack()
+      ->dir($this->getConfigValue('repo.root'))
+      ->exec("rm -rf vendor;")
+      ->run();
     $this->invokeCommand('internal:composer:require', $package_options);
     $this->say('<comment>ACSF Tools has been added. Some post-install configuration is necessary.</comment>');
     $this->say('<comment>See /drush/Commands/acsf_tools/README.md. </comment>');

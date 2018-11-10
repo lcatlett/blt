@@ -27,13 +27,15 @@
         "doctrine/inflector": "~1.1.0",
         "drupal/coder": "^8.3.1",
         "drush/drush": "^9.4.0",
+        "consolidation/site-alias": "^1.1.9",
+        "gordalina/cachetool": "3.2.1",
         "grasmash/drupal-security-warning": "^1.0.0",
         "grasmash/yaml-cli": "^1.0.0",
         "grasmash/yaml-expander": "^1.2.0",
         "oomphinc/composer-installers-extender": "^1.1",
         "phpunit/phpunit": "^4.8|^6.5",
         "squizlabs/php_codesniffer": "^3.0.1",
-        "symfony/console": "^3.4.0",
+        "symfony/console": "^3.4.15",
         "symfony/twig-bridge": "^3.3",
         "symfony/yaml": "^3.2.8",
         "tivie/php-os-detector": "^1.0",
@@ -62,7 +64,8 @@
     },
     "config": {
         "sort-packages": true,
-        "php": "7"
+        "php": "7",
+        "optimize-autoloader": true
     },
     "suggest": {
         "hirak/prestissimo": "^0.3",
