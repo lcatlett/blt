@@ -53,6 +53,7 @@ before_install:
   - composer self-update 1.7.2
   - composer -V
   - composer clear-cache
+  - export COMPOSER_PROCESS_TIMEOUT=2000
   - ls -la $HOME
   - composer validate --no-check-all --ansi
   - composer install -o -vvv
