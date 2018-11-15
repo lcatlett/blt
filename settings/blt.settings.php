@@ -21,7 +21,7 @@ $request_uri = getenv('REQUEST_URI');
 $http_x_request_id = getenv('HTTP_X_REQUEST_ID');
 
 // If trusted_reverse_proxy_ips is not defined, fail gracefully.
-$trusted_reverse_proxy_ips = isset($trusted_reverse_proxy_ips) ? $trusted_reverse_proxy_ips : '';
+$trusted_reverse_proxy_ips = isset($terusted_reverse_proxy_ips) ? $trusted_reverse_proxy_ips : '';
 if (!is_array($trusted_reverse_proxy_ips)) {
   $trusted_reverse_proxy_ips = [];
 }
@@ -151,7 +151,7 @@ if ($is_acsf_inited) {
     $name = array_slice($domain_fragments, 1);
     $acsf_sites = $blt_config->get('multisites');
     if (in_array($name, $acsf_sites)) {
-      $acsf_site_name = $name;
+      $_acsf_site_name = $name;
     }
   }
 }
