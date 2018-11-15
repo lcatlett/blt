@@ -72,10 +72,10 @@
     },
     "scripts": {
         "pre-install-cmd": [
-          "composer dump-autoload --optimize --no-dev --classmap-authoritative"
+          "composer dump-autoload --optimize --classmap-authoritative"
         ],
         "pre-update-cmd": [
-          "composer dump-autoload --optimize --no-dev --classmap-authoritative"
+          "composer dump-autoload --optimize --classmap-authoritative"
         ]
     },
     "minimum-stability": "dev",
