@@ -16,8 +16,8 @@
         }
     },
     "require": {
-            "composer/installers": "^1.2.0"
-    },
+        "symfony/flex": "^1.1",
+     },
     "require-dev": {},
     "extra": {
         "enable-patching": true,
