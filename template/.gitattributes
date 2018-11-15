@@ -93,5 +93,4 @@
 phpunit.xml.dist export-ignore
 /vendor/autoload.php export-ignore
 /vendor/composer export-ignore
-/core
 /symfony.lock
