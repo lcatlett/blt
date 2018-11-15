@@ -7,7 +7,7 @@
             "type": "path",
             "url": "../blt",
             "options": {
-                "symlink": false
+                "symlink": true
             }
         }
     },
