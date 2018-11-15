@@ -15,6 +15,9 @@
             "url": "https://asset-packagist.org"
         }
     },
+    "require": {
+            "composer/installers": "^1.2.0"
+    },
     "require-dev": {},
     "extra": {
         "enable-patching": true,
