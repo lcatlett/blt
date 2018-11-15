@@ -65,18 +65,18 @@
         "sort-packages": true,
         "php": "7"
     },
-     "scripts": {
+    "suggest": {
+        "hirak/prestissimo": "^0.3",
+        "typhonius/acquia_cli": "^1.0",
+        "davereid/drush-acquia-hook-invoke": "dev-master"
+    },
+    "scripts": {
         "pre-install-cmd": [
           "composer dump-autoload --optimize --no-dev --classmap-authoritative"
         ],
         "pre-update-cmd": [
           "composer dump-autoload --optimize --no-dev --classmap-authoritative"
         ]
-    },
-    "suggest": {
-        "hirak/prestissimo": "^0.3",
-        "typhonius/acquia_cli": "^1.0",
-        "davereid/drush-acquia-hook-invoke": "dev-master"
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
