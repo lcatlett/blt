@@ -17,6 +17,7 @@
     },
     "require": {
         "symfony/flex": "^1.1",
+        "zaporylie/composer-drupal-optimizations": "^1.0"
      },
     "require-dev": {},
     "extra": {
