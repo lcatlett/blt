@@ -46,7 +46,14 @@
             "ignore-duplicates": true
         }
     },
-
+    "scripts": {
+        "pre-install-cmd": [
+          "composer dump-autoload --optimize --classmap-authoritative"
+        ],
+        "pre-update-cmd": [
+          "composer dump-autoload --optimize --classmap-authoritative"
+        ]
+    },
     "minimum-stability": "dev",
     "prefer-stable": true
 }
