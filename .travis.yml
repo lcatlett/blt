@@ -57,7 +57,7 @@ before_install:
   - ls -la $HOME
   - composer validate --no-check-all --ansi
   - composer install -vvv
-  - compoesr -n info
+  - composer -n info
 
 install:
   - source ${BLT_DIR}/scripts/travis/setup_environment
