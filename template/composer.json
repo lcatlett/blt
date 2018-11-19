@@ -2,9 +2,22 @@
     "license": "proprietary",
     "type": "project",
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "optimize-autoloader": true
     },
-    "require": {},
+    "repositories": {
+        "drupal": {
+            "type": "composer",
+            "url": "https://packages.drupal.org/8"
+        },
+        "asset-packagist": {
+            "type": "composer",
+            "url": "https://asset-packagist.org"
+        }
+    },
+    "require": {
+        "zaporylie/composer-drupal-optimizations": "^1.0"
+     },
     "require-dev": {},
     "extra": {
         "enable-patching": true,
@@ -31,6 +44,14 @@
             "replace": false,
             "ignore-duplicates": true
         }
+    },
+    "scripts": {
+        "pre-install-cmd": [
+          "composer dump-autoload --optimize --classmap-authoritative"
+        ],
+        "pre-update-cmd": [
+          "composer dump-autoload --optimize --classmap-authoritative"
+        ]
     },
     "minimum-stability": "dev",
     "prefer-stable": true

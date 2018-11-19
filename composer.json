@@ -26,7 +26,7 @@
         "doctrine/common": "^2.5",
         "doctrine/inflector": "~1.1.0",
         "drupal/coder": "^8.3.1",
-        "drush/drush": "^9.4.0",
+        "drush/drush": "9.5.2",
         "grasmash/drupal-security-warning": "^1.0.0",
         "grasmash/yaml-cli": "^1.0.0",
         "grasmash/yaml-expander": "^1.2.0",
@@ -38,7 +38,8 @@
         "symfony/yaml": "^3.2.8",
         "tivie/php-os-detector": "^1.0",
         "typhonius/acquia-php-sdk-v2": "^1.0.3",
-        "wikimedia/composer-merge-plugin": "^1.4.1"
+        "wikimedia/composer-merge-plugin": "^1.4.1",
+        "consolidation/site-alias": "^1.1.11|^2"
     },
     "autoload": {
         "psr-4": {
@@ -68,6 +69,14 @@
         "hirak/prestissimo": "^0.3",
         "typhonius/acquia_cli": "^1.0",
         "davereid/drush-acquia-hook-invoke": "dev-master"
+    },
+    "scripts": {
+        "pre-install-cmd": [
+          "composer dump-autoload --optimize --classmap-authoritative"
+        ],
+        "pre-update-cmd": [
+          "composer dump-autoload --optimize --classmap-authoritative"
+        ]
     },
     "minimum-stability": "dev",
     "prefer-stable": true,

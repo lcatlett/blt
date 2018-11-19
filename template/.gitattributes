@@ -79,3 +79,9 @@
 *.PDF     -text diff
 *.jar     -text diff
 *.JAR     -text diff
+
+
+
+/.gitattributes export-ignore
+/symfony.lock export-ignore
+/composer.lock export-ignore
