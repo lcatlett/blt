@@ -615,7 +615,7 @@ class Updates {
    * )
    */
   public function update_9002000() {
-    if (file_exists($this->updater->getRepoRoot() . '/factory-hooks')) {
+   if (file_exists($this->updater->getRepoRoot() . '/factory-hooks')) {
       $messages = [
         "This update will update the files in your existing factory hooks directory.",
         "Review the resulting files and ensure that any customizations have been re-added.",
