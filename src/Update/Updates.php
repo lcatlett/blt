@@ -536,8 +536,8 @@ class Updates {
     $this->updater->getOutput()->writeln("");
   }
 
-  /**
-   * 9.1.0-alpha1.
+ /**
+   * 9.1.0.
    *
    * @Update(
    *    version = "9001000",
@@ -581,51 +581,82 @@ class Updates {
   }
 
   /**
-   * 9.1.0.
+   * 9.1.1.
    *
    * @Update(
    *    version = "9001001",
-   *    description = "Adjust Drush 9 Composer contrib directory."
+   *    description = "Add support for running Drush 8 commands in BLT and Acquia Cloud."
    * )
    */
   public function update_9001001() {
-    $this->updater->syncWithTemplate('.gitignore', TRUE);
+
+    // Sync updates to drush 8 drushrc.php in case it has been removed or added to ignore-existing.txt.
+    $drushrcFile = 'drush/drushrc.php';
+    $this->updater->syncWithTemplate($drushrcFile, TRUE);
+
+    $messages[] = "drushrc.php added/updated to provide Drush 8 command support";
+
+    // Ensure drush and other problematic packages are not in root composer.json
+
     $composer_json = $this->updater->getComposerJson();
-    if (isset($composer_json['extra']['installer-paths']['drush/contrib/{$name}'])) {
-      unset($composer_json['extra']['installer-paths']['drush/contrib/{$name}']);
-    }
-    $composer_json['extra']['installer-paths']['drush/Commands/{$name}'][] = 'type:drupal-drush';
-    $this->updater->writeComposerJson($composer_json);
-    $messages = [
-      "Your composer.json file has been modified to be compatible with Drush 9.",
-      "You must execute `composer update --lock` to update your lock file.",
+    $remove_packages = [
+      'drush/drush',
     ];
+    foreach ($remove_packages as $package) {
+      unset($composer_json['require'][$package]);
+      unset($composer_json['require-dev'][$package]);
+    }
+    $this->updater->writeComposerJson($composer_json);
+
+    $messages[] = "Drush removed from root composer config";
+
+    // Ensure local drush 9 in vendor has been removed. 
+
+    $this->updater->getFileSystem()->remove('vendor/drush');
+
+    // Update composer requires with blt templates. 
+
+    $composer_required_json = $this->updater->getComposerRequiredJson();
+    $composer_suggested_json = $this->updater->getComposerSuggestedJson();
+    $composer_json = $this->updater->getComposerJson();
+
+    // Remove packages from root composer.json that are already defined in BLT's composer.required.json with matching version.
+    if (!empty($composer_required_json['require'])) {
+      foreach ($composer_required_json['require'] as $package_name => $package_version) {
+        if (array_key_exists($package_name,
+            $composer_json['require']) && $package_version == $composer_json['require'][$package_name]
+        ) {
+          unset($composer_json['require'][$package_name]);
+        }
+      }
+    }
+
+    $messages[] = "BLT Composer packages updated to enable Drush 8 support. ";
+
+    // Run blt tasks to download and configure dependencies, bin, dirs, and bash aliases. 
+
+    $process = new Process("./vendor/bin/blt setup:composer:bin-plugin", $this->updater->getRepoRoot());
+    $process->run();
+
+    $messages[] = "Drush 8 and Drush 9 binaries and dependencies installed.";
+
+    $process = new Process("./vendor/bin/blt blt:init:drush:shell-alias -vvv", $this->updater->getRepoRoot());
+    $process->run();
+
+    $messages[] = "Drush cli bash aliases and PATHs updated.";
+ 
     $formattedBlock = $this->updater->getFormatter()->formatBlock($messages, 'ice');
     $this->updater->getOutput()->writeln("");
     $this->updater->getOutput()->writeln($formattedBlock);
     $this->updater->getOutput()->writeln("");
-  }
 
-  /**
-   * 9.2.0.
-   *
-   * @Update(
-   *    version = "9002000",
-   *    description = "Factory Hooks Drush 9 bug fixes and enhancements for db-update."
-   * )
-   */
-  public function update_9002000() {
-    if (file_exists($this->updater->getRepoRoot() . '/factory-hooks')) {
-      $messages = [
-        "This update will update the files in your existing factory hooks directory.",
-        "Review the resulting files and ensure that any customizations have been re-added.",
-      ];
-      $this->updater->executeCommand("./vendor/bin/blt recipes:acsf:init:hooks");
-      $formattedBlock = $this->updater->getFormatter()->formatBlock($messages, 'ice');
-      $this->updater->getOutput()->writeln("");
-      $this->updater->getOutput()->writeln($formattedBlock);
-      $this->updater->getOutput()->writeln("");
-    }
   }
 
 }
+
+
+
+
+
+
+    

@@ -106,25 +106,4 @@ class AcsfCommand extends BltTasks {
     return $result;
   }
 
-  /**
-   * Download drush 8 binary.
-   *
-   * @param string $destination
-   *   Download destination.
-   */
-  protected function downloadDrush8($destination) {
-    $file = fopen($destination, 'w');
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL,
-      'https://github.com/drush-ops/drush/releases/download/8.1.15/drush.phar');
-    curl_setopt($ch, CURLOPT_FAILONERROR, TRUE);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, TRUE);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, TRUE);
-    curl_setopt($ch, CURLOPT_FILE, $file);
-    curl_exec($ch);
-    curl_close($ch);
-    fclose($file);
-    $this->_chmod($destination, 0755);
-  }
-
 }
