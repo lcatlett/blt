@@ -6,8 +6,8 @@
 # /factory-hooks/db-update directory will prompt them to be run *instead of* the
 # regular database update (drush updatedb) command. So that update command will
 # normally be part of the commands executed below.
-#
-# Usage: post-code-deploy site env db-role domain custom-arg
+# 
+# Usage: '/mnt/www/html/site.env/factory-hooks/db-update/db-update.sh' 'site' 'env' 'db-role' 'domain'
 # Map the script inputs to convenient names.
 
 # Exit immediately on error and enable verbose log output.
