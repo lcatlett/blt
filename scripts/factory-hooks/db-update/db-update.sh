@@ -50,4 +50,8 @@ echo "Running BLT deploy tasks on $uri domain in $env environment on the $site s
 # valid URI but "domain.com/subpath" is not.
 DRUSH_PATHS_CACHE_DIRECTORY=$cacheDir $blt drupal:update --environment=$env --site=${name[0]} --define drush.uri=$domain/ --verbose --no-interaction
 
+# Clean up the drush cache directory.
+echo "Removing temporary drush cache files."
+rm -rf $cacheDir
+
 set +v
